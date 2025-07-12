@@ -1,0 +1,107 @@
+"use client";
+
+import { Bell, User, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import AddPersonDialog from './add-user-dialog';
+import type { Person } from "@/lib/types";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+
+interface SettingsTabProps {
+  people: Person[];
+  onAddPerson: (person: Omit<Person, 'id' | 'notificationsEnabled'>) => void;
+  onRemovePerson: (personId: string) => void;
+  notificationsEnabled: boolean;
+  onToggleNotifications: () => void;
+}
+
+export default function SettingsTab({
+  people,
+  onAddPerson,
+  onRemovePerson,
+  notificationsEnabled,
+  onToggleNotifications
+}: SettingsTabProps) {
+  return (
+    <div className="p-4 pb-24 space-y-4">
+      <div className="text-center mb-6">
+        <h1 className="text-2xl font-bold text-foreground">Settings</h1>
+        <p className="text-muted-foreground">Manage your sleep tracking preferences</p>
+      </div>
+
+      <Card className="p-4 bg-card border-border shadow-md">
+        <h3 className="font-semibold mb-4 flex items-center gap-2 text-foreground">
+          <Bell className="w-5 h-5 text-blue-400" />
+          Notifications
+        </h3>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-medium text-foreground">Push Notifications</p>
+            <p className="text-sm text-muted-foreground">
+              Get notified when checkups are due
+            </p>
+          </div>
+          <Switch
+            checked={notificationsEnabled}
+            onCheckedChange={onToggleNotifications}
+            className="data-[state=checked]:bg-blue-500 data-[state=unchecked]:bg-input"
+          />
+        </div>
+      </Card>
+
+      <Card className="p-4 bg-card border-border shadow-md">
+        <h3 className="font-semibold mb-4 flex items-center gap-2 text-foreground">
+          <User className="w-5 h-5 text-purple-400" />
+          People in Your Care
+        </h3>
+        
+        <div className="space-y-3 mb-4">
+          {people.map((person) => (
+            <div key={person.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border">
+              <div>
+                <p className="font-medium text-foreground">{person.name}</p>
+                {person.age && <p className="text-sm text-muted-foreground">Age: {person.age}</p>}
+                {person.notes && <p className="text-sm text-muted-foreground">{person.notes}</p>}
+              </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-500 hover:bg-red-500/10 hover:text-red-600"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-card border-border">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete {person.name} and all their sleep data. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => onRemovePerson(person.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          ))}
+        </div>
+
+        <AddPersonDialog onAddPerson={onAddPerson} />
+      </Card>
+
+      <Card className="p-4 bg-card border-border shadow-md">
+        <h3 className="font-semibold mb-4 text-foreground">App Information</h3>
+        <div className="space-y-2 text-sm text-muted-foreground">
+          <p>Sleep Tracker v1.0.0</p>
+          <p>Designed for mobile use</p>
+          <p>Checkup reminder: Every 10 minutes</p>
+        </div>
+      </Card>
+    </div>
+  );
+};

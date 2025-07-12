@@ -1,17 +1,28 @@
-export type Patient = {
+export type Person = {
   id: string;
   name: string;
-  age: number;
-  notes: string;
+  age?: number;
+  notes?: string;
   notificationsEnabled: boolean;
 };
 
 export type SleepSession = {
   id: string;
-  patientId: string;
+  personId: string;
+  personName: string;
   startTime: Date;
-  endTime: Date | null;
+  endTime?: Date;
   checkups: Date[];
+  status: 'active' | 'completed';
 };
 
-export type ActiveTab = 'dashboard' | 'history' | 'users';
+export type SleepLog = {
+  id: string;
+  personId: string;
+  personName: string;
+  action: 'start' | 'checkup' | 'end';
+  timestamp: Date;
+  sessionId: string;
+}
+
+export type ActiveTab = 'tracker' | 'archive' | 'settings';

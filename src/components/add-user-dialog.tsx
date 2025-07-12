@@ -1,28 +1,33 @@
 "use client";
 
-import { useForm } from 'react-hook-form';
+import { useState } from "react";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import type { Person } from '@/lib/types';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import type { Patient } from '@/lib/types';
+import { Form, FormControl, FormField, FormItem, FormMessage } from "./ui/form";
+
 
 const formSchema = z.object({
-  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
-  age: z.coerce.number().int().positive({ message: "Age must be a positive number." }),
-  notes: z.string().optional(),
+  name: z.string().min(2, "Name must be at least 2 characters.").max(50),
+  age: z.coerce.number().int().positive().optional(),
+  notes: z.string().max(200).optional(),
 });
 
-interface AddUserDialogProps {
-  isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
-  onAddPatient: (patient: Omit<Patient, 'id' | 'notificationsEnabled'>) => void;
+
+interface AddPersonDialogProps {
+  onAddPerson: (person: Omit<Person, 'id' | 'notificationsEnabled'>) => void;
 }
 
-export function AddUserDialog({ isOpen, setIsOpen, onAddPatient }: AddUserDialogProps) {
+export default function AddPersonDialog({ onAddPerson }: AddPersonDialogProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -32,69 +37,102 @@ export function AddUserDialog({ isOpen, setIsOpen, onAddPatient }: AddUserDialog
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    onAddPatient(values);
+  const handleSubmit = (values: z.infer<typeof formSchema>) => {
+    onAddPerson({
+      name: values.name.trim(),
+      age: values.age,
+      notes: values.notes?.trim() || undefined
+    });
     form.reset();
     setIsOpen(false);
-  }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogTrigger asChild>
+        <Button className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600">
+          <Plus className="w-4 h-4 mr-2" />
+          Add Person
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md bg-card border-border">
         <DialogHeader>
-          <DialogTitle>Add New Patient</DialogTitle>
-          <DialogDescription>
-            Enter the details for the new person you want to monitor.
-          </DialogDescription>
+          <DialogTitle className="text-foreground">Add New Person</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Name</FormLabel>
+                  <Label htmlFor="name" className="text-foreground">Name *</Label>
                   <FormControl>
-                    <Input placeholder="John Doe" {...field} />
+                    <Input
+                      id="name"
+                      placeholder="Enter name"
+                      maxLength={50}
+                      className="bg-input border-border text-foreground"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
             <FormField
               control={form.control}
               name="age"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Age</FormLabel>
+                  <Label htmlFor="age" className="text-foreground">Age (optional)</Label>
                   <FormControl>
-                    <Input type="number" placeholder="42" {...field} />
+                    <Input
+                      id="age"
+                      type="number"
+                      placeholder="Enter age"
+                      className="bg-input border-border text-foreground"
+                      {...field}
+                      onChange={event => field.onChange(+event.target.value)}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-             <FormField
+
+            <FormField
               control={form.control}
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notes</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Any relevant notes..." {...field} />
+                  <Label htmlFor="notes" className="text-foreground">Notes (optional)</Label>
+                   <FormControl>
+                    <Textarea
+                      id="notes"
+                      placeholder="Additional notes"
+                      maxLength={200}
+                      className="bg-input border-border text-foreground"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
-              <Button type="submit">Add Patient</Button>
+              <Button type="button" variant="outline" onClick={() => setIsOpen(false)} className="border-border text-foreground hover:bg-accent hover:text-accent-foreground">
+                Cancel
+              </Button>
+              <Button type="submit" disabled={!form.formState.isValid} className="bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600">
+                Add Person
+              </Button>
             </DialogFooter>
           </form>
         </Form>
       </DialogContent>
     </Dialog>
   );
-}
+};
