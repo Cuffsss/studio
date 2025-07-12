@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Bell, User, Trash2, Sun, Moon, Laptop, Clock, Edit } from "lucide-react";
+import { Bell, User, Trash2, Sun, Moon, Laptop, Clock, Edit, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -23,6 +23,7 @@ interface SettingsTabProps {
   onToggleNotifications: () => void;
   checkupIntervalMin: number;
   onSetCheckupInterval: (minutes: number) => void;
+  onLogout: () => void;
 }
 
 export default function SettingsTab({
@@ -34,6 +35,7 @@ export default function SettingsTab({
   onToggleNotifications,
   checkupIntervalMin,
   onSetCheckupInterval,
+  onLogout,
 }: SettingsTabProps) {
   const { setTheme } = useTheme();
   const [interval, setInterval] = useState(checkupIntervalMin.toString());
@@ -166,6 +168,11 @@ export default function SettingsTab({
 
         <AddPersonDialog onAddPerson={onAddPerson} />
       </Card>
+
+      <Button variant="outline" onClick={onLogout} className="w-full">
+        <LogOut className="w-4 h-4 mr-2" />
+        Logout
+      </Button>
 
     </div>
   );
