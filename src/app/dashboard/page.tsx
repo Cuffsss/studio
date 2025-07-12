@@ -122,6 +122,12 @@ export default function DashboardPage() {
           icon: '/logo.png',
           tag: sessionId, // Use session ID as tag to prevent duplicate notifications
         });
+        
+        // Play notification sound
+        const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-clear-interface-beep-1211.mp3');
+        audio.play().catch(error => {
+          console.error("Failed to play notification sound:", error);
+        });
       }
     }, CHECKUP_INTERVAL_MS);
   }
