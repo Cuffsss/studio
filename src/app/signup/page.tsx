@@ -19,18 +19,27 @@ export default function SignupPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleSignup = async (e: React.FormEvent) => {
+  const handleSignup = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    if (email && password) {
-        toast({ title: "Success", description: "Account created successfully. Please log in." });
-        router.push("/");
-    } else {
-        toast({
+    try {
+      if (email && password) {
+          toast({ title: "Success", description: "Account created successfully. Please log in." });
+          router.push("/");
+      } else {
+          toast({
+              variant: "destructive",
+              title: "Signup Failed",
+              description: "Please enter an email and password.",
+          });
+          setLoading(false);
+      }
+    } catch(error) {
+       toast({
             variant: "destructive",
-            title: "Signup Failed",
-            description: "Please enter an email and password.",
+            title: "An Error Occurred",
+            description: "Something went wrong. Please try again.",
         });
         setLoading(false);
     }
@@ -41,7 +50,8 @@ export default function SignupPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <UserPlus className="mx-auto h-12 w-12 text-primary" />
-          <CardTitle className="mt-4 text-2xl">Create an Account</CardTitle>
+          <h1 className="text-2xl font-bold mt-4">MFSFD - Sleep Tracker</h1>
+          <CardTitle className="mt-2 text-xl font-medium">Create an Account</CardTitle>
           <CardDescription>Sign up to start tracking sleep.</CardDescription>
         </CardHeader>
         <CardContent>

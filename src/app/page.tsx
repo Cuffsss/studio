@@ -19,23 +19,31 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    // Simulate a successful login for any email/password
-    if (email && password) {
-      toast({ title: "Success", description: "Logged in successfully." });
-      // Set a mock cookie to satisfy the middleware
-      Cookies.set('firebaseIdToken', 'mock-token-for-dev', { expires: 1 });
-      router.push("/dashboard");
-    } else {
-       toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description: "Please enter an email and password.",
-      });
-      setLoading(false);
+    try {
+      if (email && password) {
+        toast({ title: "Success", description: "Logged in successfully." });
+        Cookies.set('firebaseIdToken', 'mock-token-for-dev', { expires: 1 });
+        router.push("/dashboard");
+      } else {
+         toast({
+          variant: "destructive",
+          title: "Login Failed",
+          description: "Please enter an email and password.",
+        });
+        setLoading(false);
+      }
+    } catch (error) {
+        console.error("Login error:", error);
+        toast({
+            variant: "destructive",
+            title: "An Error Occurred",
+            description: "Something went wrong. Please try again.",
+        });
+        setLoading(false);
     }
   };
 
@@ -44,7 +52,8 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <Moon className="mx-auto h-12 w-12 text-primary" />
-          <CardTitle className="mt-4 text-2xl">Welcome Back</CardTitle>
+          <h1 className="text-2xl font-bold mt-4">MFSFD - Sleep Tracker</h1>
+          <CardTitle className="mt-2 text-xl font-medium">Welcome Back</CardTitle>
           <CardDescription>Log in to track sleep sessions.</CardDescription>
         </CardHeader>
         <CardContent>
