@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { firebaseApp } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,9 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { Moon } from "lucide-react";
+import { UserPlus } from "lucide-react";
 
-export default function LoginPage() {
+export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,7 +27,7 @@ export default function LoginPage() {
     }
   }, []);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!auth) {
         toast({
@@ -39,13 +39,13 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      toast({ title: "Success", description: "Logged in successfully." });
-      router.push("/dashboard");
+      await createUserWithEmailAndPassword(auth, email, password);
+      toast({ title: "Success", description: "Account created successfully. Please log in." });
+      router.push("/");
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Login Failed",
+        title: "Signup Failed",
         description: error.message,
       });
       setLoading(false);
@@ -56,12 +56,12 @@ export default function LoginPage() {
     <main className="flex min-h-screen flex-col items-center justify-center p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <Moon className="mx-auto h-12 w-12 text-primary" />
-          <CardTitle className="mt-4 text-2xl">Welcome Back</CardTitle>
-          <CardDescription>Log in to track sleep sessions.</CardDescription>
+          <UserPlus className="mx-auto h-12 w-12 text-primary" />
+          <CardTitle className="mt-4 text-2xl">Create an Account</CardTitle>
+          <CardDescription>Sign up to start tracking sleep.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleSignup} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -86,15 +86,15 @@ export default function LoginPage() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading || !auth}>
-              {loading ? "Logging in..." : "Login"}
+              {loading ? "Creating account..." : "Sign Up"}
             </Button>
           </form>
         </CardContent>
         <CardFooter className="flex justify-center text-sm">
           <p>
-            Don't have an account?&nbsp;
-            <Link href="/signup" className="underline">
-              Sign up
+            Already have an account?&nbsp;
+            <Link href="/" className="underline">
+              Login
             </Link>
           </p>
         </CardFooter>
