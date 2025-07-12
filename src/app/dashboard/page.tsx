@@ -5,7 +5,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from "next/navigation";
 import { Moon, Archive, Settings, LogOut } from "lucide-react";
 import type { Person, SleepSession, SleepLog, ActiveTab } from '@/lib/types';
-import { initialPatients, initialSleepLogs } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { nanoid } from 'nanoid';
 import Cookies from 'js-cookie';
@@ -19,11 +18,44 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const DEFAULT_CHECKUP_INTERVAL_MIN = 10;
 
+// Helper function to get data from localStorage
+const getFromLocalStorage = <T>(key: string, defaultValue: T): T => {
+  if (typeof window === 'undefined') {
+    return defaultValue;
+  }
+  const item = localStorage.getItem(key);
+  if (item) {
+    try {
+      // Reviver function to convert date strings back to Date objects
+      return JSON.parse(item, (key, value) => {
+        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/.test(value)) {
+          return new Date(value);
+        }
+        return value;
+      });
+    } catch (e) {
+      console.error(`Error parsing localStorage item "${key}":`, e);
+      return defaultValue;
+    }
+  }
+  return defaultValue;
+};
+
+// Helper function to set data in localStorage
+const setInLocalStorage = <T>(key: string, value: T) => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(key, JSON.stringify(value));
+  }
+};
+
+
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("tracker");
-  const [people, setPeople] = useState<Person[]>(initialPatients);
+  
+  const [people, setPeople] = useState<Person[]>([]);
   const [activeSessions, setActiveSessions] = useState<SleepSession[]>([]);
-  const [logs, setLogs] = useState<SleepLog[]>(initialSleepLogs);
+  const [logs, setLogs] = useState<SleepLog[]>([]);
+
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [checkupIntervalMin, setCheckupIntervalMin] = useState(DEFAULT_CHECKUP_INTERVAL_MIN);
   const { toast } = useToast();
@@ -31,6 +63,37 @@ export default function DashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<boolean>(false);
+
+  // Load initial data from localStorage
+  useEffect(() => {
+    setPeople(getFromLocalStorage('people', []));
+    setActiveSessions(getFromLocalStorage('activeSessions', []));
+    setLogs(getFromLocalStorage('logs', []));
+    setCheckupIntervalMin(getFromLocalStorage('checkupIntervalMin', DEFAULT_CHECKUP_INTERVAL_MIN));
+
+    // Check notification permission
+    if ('Notification' in window && Notification.permission === 'granted') {
+      setNotificationsEnabled(true);
+    }
+  }, []);
+
+  // Save data to localStorage whenever it changes
+  useEffect(() => {
+    setInLocalStorage('people', people);
+  }, [people]);
+
+  useEffect(() => {
+    setInLocalStorage('activeSessions', activeSessions);
+  }, [activeSessions]);
+
+  useEffect(() => {
+    setInLocalStorage('logs', logs);
+  }, [logs]);
+
+  useEffect(() => {
+    setInLocalStorage('checkupIntervalMin', checkupIntervalMin);
+  }, [checkupIntervalMin]);
+
 
   useEffect(() => {
     const token = Cookies.get('firebaseIdToken');
@@ -42,28 +105,8 @@ export default function DashboardPage() {
     setLoading(false);
   }, [router]);
   
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      // Load checkup interval from local storage
-      const savedInterval = localStorage.getItem('checkupIntervalMin');
-      if (savedInterval && !isNaN(parseInt(savedInterval))) {
-        setCheckupIntervalMin(parseInt(savedInterval));
-      }
-
-      // Check notification permission
-      if ('Notification' in window) {
-        if (Notification.permission === 'granted') {
-          setNotificationsEnabled(true);
-        }
-      }
-    }
-  }, []);
-
   const handleSetCheckupInterval = (minutes: number) => {
     setCheckupIntervalMin(minutes);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('checkupIntervalMin', minutes.toString());
-    }
     toast({ title: "Settings Updated", description: `Check-up interval set to ${minutes} minutes.` });
   };
 
@@ -149,7 +192,6 @@ export default function DashboardPage() {
           audio.play().catch(error => {
             console.error("Failed to play notification sound:", error);
             // This error often happens if the user hasn't interacted with the page first.
-            // A common workaround is to play a silent sound on the first user interaction.
           });
         }
         return currentActiveSessions;
@@ -198,7 +240,6 @@ export default function DashboardPage() {
       })
     );
     
-    // Find session in the original state to add log
     const session = activeSessions.find(s => s.id === sessionId);
     if (session) {
         addLog(session.personId, 'checkup', sessionId);

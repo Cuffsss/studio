@@ -1,8 +1,9 @@
 import type { Person, SleepLog } from './types';
 
-export const initialPatients: Person[] = [
-  { id: "1", name: "John Doe", age: 75, notes: "Needs regular monitoring", notificationsEnabled: true },
-  { id: "2", name: "Jane Smith", age: 68, notificationsEnabled: false }
-];
+// This file is now used only for type definitions, 
+// as initial data is loaded from localStorage.
+// We keep it to avoid breaking imports, but the arrays are empty.
+
+export const initialPatients: Person[] = [];
 
 export const initialSleepLogs: SleepLog[] = [];
