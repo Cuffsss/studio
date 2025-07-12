@@ -133,22 +133,30 @@ export default function DashboardPage() {
   const scheduleNotification = (personName: string, sessionId: string) => {
     const checkupIntervalMs = checkupIntervalMin * 60 * 1000;
     return setTimeout(() => {
-      const sessionStillActive = activeSessions.some(s => s.id === sessionId && s.status === 'active');
-      if (notificationsEnabled && sessionStillActive) {
-        new Notification('Check-up Due!', {
-          body: `It's time to check on ${personName}.`,
-          icon: '/logo.png',
-          tag: sessionId, // Use session ID as tag to prevent duplicate notifications
-        });
+      // We need to use a functional update for activeSessions to get the latest state inside the timeout
+      setActiveSessions(currentActiveSessions => {
+        const sessionStillActive = currentActiveSessions.some(s => s.id === sessionId && s.status === 'active');
         
-        // Play notification sound
-        const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-clear-interface-beep-1211.mp3');
-        audio.play().catch(error => {
-          console.error("Failed to play notification sound:", error);
-        });
-      }
+        if (notificationsEnabled && sessionStillActive) {
+          new Notification('Check-up Due!', {
+            body: `It's time to check on ${personName}.`,
+            icon: '/logo.png',
+            tag: sessionId, // Use session ID as tag to prevent duplicate notifications
+          });
+          
+          // Play notification sound
+          const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-clear-interface-beep-1211.mp3');
+          audio.play().catch(error => {
+            console.error("Failed to play notification sound:", error);
+            // This error often happens if the user hasn't interacted with the page first.
+            // A common workaround is to play a silent sound on the first user interaction.
+          });
+        }
+        return currentActiveSessions;
+      });
     }, checkupIntervalMs);
-  }
+  };
+  
 
   const handleStartSleep = (personId: string) => {
     const sessionId = nanoid();
@@ -173,29 +181,29 @@ export default function DashboardPage() {
   };
 
   const handleCheckup = (sessionId: string) => {
-    const session = activeSessions.find(s => s.id === sessionId);
-    if (!session) return;
-    
-    if (session.notificationTimerId) {
-      clearTimeout(session.notificationTimerId);
-    }
-    const newNotificationTimerId = scheduleNotification(session.personName, sessionId);
-
-
     setActiveSessions(prev =>
-      prev.map(s =>
-        s.id === sessionId
-          ? { 
-              ...s, 
-              checkups: [...s.checkups, new Date()],
-              notificationTimerId: newNotificationTimerId
-            }
-          : s
-      )
+      prev.map(s => {
+        if (s.id === sessionId) {
+          if (s.notificationTimerId) {
+            clearTimeout(s.notificationTimerId);
+          }
+          const newNotificationTimerId = scheduleNotification(s.personName, sessionId);
+          return {
+            ...s,
+            checkups: [...s.checkups, new Date()],
+            notificationTimerId: newNotificationTimerId
+          };
+        }
+        return s;
+      })
     );
-
-    addLog(session.personId, 'checkup', sessionId);
-    toast({ title: "Check-up Logged", description: `Check-up for ${session.personName} has been logged.` });
+    
+    // Find session in the original state to add log
+    const session = activeSessions.find(s => s.id === sessionId);
+    if (session) {
+        addLog(session.personId, 'checkup', sessionId);
+        toast({ title: "Check-up Logged", description: `Check-up for ${session.personName} has been logged.` });
+    }
   };
 
   const handleEndSleep = (sessionId: string) => {
