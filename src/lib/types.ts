@@ -1,3 +1,4 @@
+
 export type Person = {
   id: string;
   name: string;
@@ -27,4 +28,4 @@ export type SleepLog = {
   notes?: string;
 }
 
-export type ActiveTab = 'tracker' | 'archive' | 'settings';
+export type ActiveTab = 'tracker' | 'archive' | 'settings' | 'reports';

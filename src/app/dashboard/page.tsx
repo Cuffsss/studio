@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from "next/navigation";
-import { Moon, Archive, Settings, LogOut } from "lucide-react";
+import { Moon, Archive, Settings, LogOut, LineChart } from "lucide-react";
 import type { Person, SleepSession, SleepLog, ActiveTab } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { nanoid } from 'nanoid';
@@ -13,6 +13,7 @@ import AnimatedTabs from '@/components/animated-tabs';
 import TrackerTab from '@/components/tracker-tab';
 import ArchiveTab from '@/components/archive-tab';
 import SettingsTab from '@/components/settings-tab';
+import ReportsTab from '@/components/reports-tab';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -154,6 +155,7 @@ export default function DashboardPage() {
   const tabs = [
     { id: "archive", title: "Archive", icon: <Archive className="w-5 h-5" /> },
     { id: "tracker", title: "Tracker", icon: <Moon className="w-5 h-5" /> },
+    { id: "reports", title: "Reports", icon: <LineChart className="w-5 h-5" /> },
     { id: "settings", title: "Settings", icon: <Settings className="w-5 h-5" /> }
   ];
 
@@ -272,6 +274,11 @@ export default function DashboardPage() {
     toast({ title: "Person Added", description: `${newPerson.name} has been added.` });
   };
 
+  const handleEditPerson = (personId: string, updatedData: Omit<Person, 'id' | 'notificationsEnabled'>) => {
+    setPeople(prev => prev.map(p => p.id === personId ? { ...p, ...updatedData } : p));
+    toast({ title: "Person Updated", description: `${updatedData.name} has been updated.` });
+  };
+
   const handleRemovePerson = (personId: string) => {
     const personName = people.find(p => p.id === personId)?.name;
     setPeople(prev => prev.filter(p => p.id !== personId));
@@ -296,11 +303,14 @@ export default function DashboardPage() {
         );
       case "archive":
         return <ArchiveTab logs={logs} people={people} />;
+      case "reports":
+        return <ReportsTab logs={logs} people={people} />;
       case "settings":
         return (
           <SettingsTab
             people={people}
             onAddPerson={handleAddPerson}
+            onEditPerson={handleEditPerson}
             onRemovePerson={handleRemovePerson}
             notificationsEnabled={notificationsEnabled}
             onToggleNotifications={requestNotificationPermission}

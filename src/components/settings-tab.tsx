@@ -2,11 +2,12 @@
 "use client";
 
 import { useState } from 'react';
-import { Bell, User, Trash2, Sun, Moon, Laptop, Clock } from "lucide-react";
+import { Bell, User, Trash2, Sun, Moon, Laptop, Clock, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import AddPersonDialog from './add-user-dialog';
+import EditPersonDialog from './edit-person-dialog';
 import type { Person } from "@/lib/types";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useTheme } from "next-themes";
@@ -16,6 +17,7 @@ import { Label } from './ui/label';
 interface SettingsTabProps {
   people: Person[];
   onAddPerson: (person: Omit<Person, 'id' | 'notificationsEnabled'>) => void;
+  onEditPerson: (personId: string, data: Omit<Person, 'id' | 'notificationsEnabled'>) => void;
   onRemovePerson: (personId: string) => void;
   notificationsEnabled: boolean;
   onToggleNotifications: () => void;
@@ -26,6 +28,7 @@ interface SettingsTabProps {
 export default function SettingsTab({
   people,
   onAddPerson,
+  onEditPerson,
   onRemovePerson,
   notificationsEnabled,
   onToggleNotifications,
@@ -123,29 +126,40 @@ export default function SettingsTab({
                 {person.age && <p className="text-sm text-muted-foreground">Age: {person.age}</p>}
                 {person.notes && <p className="text-sm text-muted-foreground">{person.notes}</p>}
               </div>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-red-500 hover:bg-red-500/10 hover:text-red-600"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent className="bg-card border-border">
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will permanently delete {person.name} and all their sleep data. This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => onRemovePerson(person.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <div className="flex items-center">
+                 <EditPersonDialog person={person} onEditPerson={onEditPerson}>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-blue-500 hover:bg-blue-500/10 hover:text-blue-600"
+                    >
+                        <Edit className="w-4 h-4" />
+                    </Button>
+                </EditPersonDialog>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-500 hover:bg-red-500/10 hover:text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="bg-card border-border">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete {person.name} and all their sleep data. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => onRemovePerson(person.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </div>
           ))}
         </div>
