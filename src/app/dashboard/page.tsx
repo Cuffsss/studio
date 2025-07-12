@@ -153,9 +153,9 @@ export default function DashboardPage() {
   };
 
   const tabs = [
-    { id: "archive", title: "Archive", icon: <Archive className="w-5 h-5" /> },
     { id: "tracker", title: "Tracker", icon: <Moon className="w-5 h-5" /> },
     { id: "reports", title: "Reports", icon: <LineChart className="w-5 h-5" /> },
+    { id: "archive", title: "Archive", icon: <Archive className="w-5 h-5" /> },
     { id: "settings", title: "Settings", icon: <Settings className="w-5 h-5" /> }
   ];
 
