@@ -17,8 +17,7 @@ import SettingsTab from '@/components/settings-tab';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const CHECKUP_INTERVAL_MIN = 10;
-const CHECKUP_INTERVAL_MS = CHECKUP_INTERVAL_MIN * 60 * 1000;
+const DEFAULT_CHECKUP_INTERVAL_MIN = 10;
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("tracker");
@@ -26,6 +25,7 @@ export default function DashboardPage() {
   const [activeSessions, setActiveSessions] = useState<SleepSession[]>([]);
   const [logs, setLogs] = useState<SleepLog[]>(initialSleepLogs);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [checkupIntervalMin, setCheckupIntervalMin] = useState(DEFAULT_CHECKUP_INTERVAL_MIN);
   const { toast } = useToast();
   
   const router = useRouter();
@@ -41,14 +41,31 @@ export default function DashboardPage() {
     }
     setLoading(false);
   }, [router]);
-
+  
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      if (Notification.permission === 'granted') {
-        setNotificationsEnabled(true);
+    if (typeof window !== 'undefined') {
+      // Load checkup interval from local storage
+      const savedInterval = localStorage.getItem('checkupIntervalMin');
+      if (savedInterval && !isNaN(parseInt(savedInterval))) {
+        setCheckupIntervalMin(parseInt(savedInterval));
+      }
+
+      // Check notification permission
+      if ('Notification' in window) {
+        if (Notification.permission === 'granted') {
+          setNotificationsEnabled(true);
+        }
       }
     }
   }, []);
+
+  const handleSetCheckupInterval = (minutes: number) => {
+    setCheckupIntervalMin(minutes);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('checkupIntervalMin', minutes.toString());
+    }
+    toast({ title: "Settings Updated", description: `Check-up interval set to ${minutes} minutes.` });
+  };
 
   const requestNotificationPermission = async () => {
     if (typeof window === 'undefined' || !('Notification' in window)) {
@@ -114,6 +131,7 @@ export default function DashboardPage() {
   };
 
   const scheduleNotification = (personName: string, sessionId: string) => {
+    const checkupIntervalMs = checkupIntervalMin * 60 * 1000;
     return setTimeout(() => {
       const sessionStillActive = activeSessions.some(s => s.id === sessionId && s.status === 'active');
       if (notificationsEnabled && sessionStillActive) {
@@ -129,7 +147,7 @@ export default function DashboardPage() {
           console.error("Failed to play notification sound:", error);
         });
       }
-    }, CHECKUP_INTERVAL_MS);
+    }, checkupIntervalMs);
   }
 
   const handleStartSleep = (personId: string) => {
@@ -213,6 +231,7 @@ export default function DashboardPage() {
 
 
   const renderActiveTab = () => {
+    const checkupIntervalMs = checkupIntervalMin * 60 * 1000;
     switch (activeTab) {
       case "tracker":
         return (
@@ -222,7 +241,7 @@ export default function DashboardPage() {
             onStartSleep={handleStartSleep}
             onCheckup={handleCheckup}
             onEndSleep={handleEndSleep}
-            checkupIntervalMs={CHECKUP_INTERVAL_MS}
+            checkupIntervalMs={checkupIntervalMs}
           />
         );
       case "archive":
@@ -235,6 +254,8 @@ export default function DashboardPage() {
             onRemovePerson={handleRemovePerson}
             notificationsEnabled={notificationsEnabled}
             onToggleNotifications={requestNotificationPermission}
+            checkupIntervalMin={checkupIntervalMin}
+            onSetCheckupInterval={handleSetCheckupInterval}
           />
         );
       default:

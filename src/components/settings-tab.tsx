@@ -1,7 +1,8 @@
 
 "use client";
 
-import { Bell, User, Trash2, Sun, Moon, Laptop } from "lucide-react";
+import { useState } from 'react';
+import { Bell, User, Trash2, Sun, Moon, Laptop, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -9,6 +10,8 @@ import AddPersonDialog from './add-user-dialog';
 import type { Person } from "@/lib/types";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useTheme } from "next-themes";
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 
 interface SettingsTabProps {
   people: Person[];
@@ -16,6 +19,8 @@ interface SettingsTabProps {
   onRemovePerson: (personId: string) => void;
   notificationsEnabled: boolean;
   onToggleNotifications: () => void;
+  checkupIntervalMin: number;
+  onSetCheckupInterval: (minutes: number) => void;
 }
 
 export default function SettingsTab({
@@ -23,9 +28,27 @@ export default function SettingsTab({
   onAddPerson,
   onRemovePerson,
   notificationsEnabled,
-  onToggleNotifications
+  onToggleNotifications,
+  checkupIntervalMin,
+  onSetCheckupInterval,
 }: SettingsTabProps) {
   const { setTheme } = useTheme();
+  const [interval, setInterval] = useState(checkupIntervalMin.toString());
+
+  const handleIntervalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInterval(e.target.value);
+  };
+
+  const handleIntervalSave = () => {
+    const newInterval = parseInt(interval);
+    if (!isNaN(newInterval) && newInterval > 0) {
+      onSetCheckupInterval(newInterval);
+    } else {
+      // Reset to original value if input is invalid
+      setInterval(checkupIntervalMin.toString());
+    }
+  };
+
 
   return (
     <div className="p-4 pb-24 space-y-4">
@@ -62,6 +85,28 @@ export default function SettingsTab({
             className="data-[state=checked]:bg-blue-500 data-[state=unchecked]:bg-input"
           />
         </div>
+      </Card>
+
+      <Card className="p-4 bg-card border-border shadow-md">
+        <h3 className="font-semibold mb-4 text-foreground">App Settings</h3>
+        <div className="space-y-2">
+            <Label htmlFor="checkup-interval" className="text-foreground flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              Check-up Interval (minutes)
+            </Label>
+             <div className="flex items-center gap-2">
+              <Input
+                id="checkup-interval"
+                type="number"
+                value={interval}
+                onChange={handleIntervalChange}
+                onBlur={handleIntervalSave}
+                min="1"
+                className="bg-input border-border text-foreground"
+              />
+              <Button onClick={handleIntervalSave} variant="outline">Set</Button>
+            </div>
+          </div>
       </Card>
 
       <Card className="p-4 bg-card border-border shadow-md">
@@ -108,14 +153,6 @@ export default function SettingsTab({
         <AddPersonDialog onAddPerson={onAddPerson} />
       </Card>
 
-      <Card className="p-4 bg-card border-border shadow-md">
-        <h3 className="font-semibold mb-4 text-foreground">App Information</h3>
-        <div className="space-y-2 text-sm text-muted-foreground">
-          <p>Sleep Tracker v1.0.0</p>
-          <p>Designed for mobile use</p>
-          <p>Checkup reminder: Every 10 minutes</p>
-        </div>
-      </Card>
     </div>
   );
 };
