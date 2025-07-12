@@ -1,12 +1,14 @@
+
 "use client";
 
-import { Bell, User, Trash2 } from "lucide-react";
+import { Bell, User, Trash2, Sun, Moon, Laptop } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import AddPersonDialog from './add-user-dialog';
 import type { Person } from "@/lib/types";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useTheme } from "next-themes";
 
 interface SettingsTabProps {
   people: Person[];
@@ -23,12 +25,24 @@ export default function SettingsTab({
   notificationsEnabled,
   onToggleNotifications
 }: SettingsTabProps) {
+  const { setTheme } = useTheme();
+
   return (
     <div className="p-4 pb-24 space-y-4">
       <div className="text-center mb-6">
         <h1 className="text-2xl font-bold text-foreground">Settings</h1>
         <p className="text-muted-foreground">Manage your sleep tracking preferences</p>
       </div>
+
+      <Card className="p-4 bg-card border-border shadow-md">
+        <h3 className="font-semibold mb-2 text-foreground">Theme</h3>
+        <p className="text-sm text-muted-foreground mb-4">Select your preferred color scheme.</p>
+        <div className="grid grid-cols-3 gap-2">
+            <Button variant="outline" onClick={() => setTheme("light")}><Sun className="mr-2 h-4 w-4" /> Light</Button>
+            <Button variant="outline" onClick={() => setTheme("dark")}><Moon className="mr-2 h-4 w-4" /> Dark</Button>
+            <Button variant="outline" onClick={() => setTheme("system")}><Laptop className="mr-2 h-4 w-4" /> System</Button>
+        </div>
+      </Card>
 
       <Card className="p-4 bg-card border-border shadow-md">
         <h3 className="font-semibold mb-4 flex items-center gap-2 text-foreground">

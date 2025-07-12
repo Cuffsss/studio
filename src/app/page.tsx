@@ -11,10 +11,12 @@ import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { Moon } from "lucide-react";
 import Cookies from 'js-cookie';
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
@@ -26,7 +28,8 @@ export default function LoginPage() {
     try {
       if (email && password) {
         toast({ title: "Success", description: "Logged in successfully." });
-        Cookies.set('firebaseIdToken', 'mock-token-for-dev', { expires: 1 });
+        const options: Cookies.CookieAttributes = rememberMe ? { expires: 7 } : {};
+        Cookies.set('firebaseIdToken', 'mock-token-for-dev', options);
         router.push("/dashboard");
       } else {
          toast({
@@ -80,6 +83,20 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
               />
+            </div>
+             <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="remember-me"
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                disabled={loading}
+              />
+              <label
+                htmlFor="remember-me"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Remember me
+              </label>
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Logging in..." : "Login"}

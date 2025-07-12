@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -30,6 +31,7 @@
     --chart-5: 27 87% 67%;
     --radius: 0.75rem;
   }
+ 
   .dark {
     --background: 222 47% 11%;
     --foreground: 210 40% 98%;

@@ -14,6 +14,7 @@ export type SleepSession = {
   endTime?: Date;
   checkups: Date[];
   status: 'active' | 'completed';
+  notificationTimerId?: NodeJS.Timeout;
 };
 
 export type SleepLog = {

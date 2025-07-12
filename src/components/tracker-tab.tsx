@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -15,9 +16,8 @@ interface TrackerTabProps {
   onStartSleep: (personId: string) => void;
   onCheckup: (sessionId: string) => void;
   onEndSleep: (sessionId: string) => void;
+  checkupIntervalMs: number;
 }
-
-const CHECKUP_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 
 const TimeSince: React.FC<{ date: Date }> = ({ date }) => {
   const [timeSince, setTimeSince] = useState('');
@@ -43,7 +43,7 @@ const TimeSince: React.FC<{ date: Date }> = ({ date }) => {
   return <span>{timeSince}</span>;
 }
 
-const SessionTimer: React.FC<{ session: SleepSession }> = ({ session }) => {
+const SessionTimer: React.FC<{ session: SleepSession, checkupIntervalMs: number }> = ({ session, checkupIntervalMs }) => {
   const [progress, setProgress] = useState(0);
   const [timeLeft, setTimeLeft] = useState('');
 
@@ -55,9 +55,9 @@ const SessionTimer: React.FC<{ session: SleepSession }> = ({ session }) => {
     const updateTimer = () => {
       const now = Date.now();
       const elapsedTime = now - lastCheckupTime;
-      const remainingTime = Math.max(0, CHECKUP_INTERVAL_MS - elapsedTime);
+      const remainingTime = Math.max(0, checkupIntervalMs - elapsedTime);
       
-      const currentProgress = (elapsedTime / CHECKUP_INTERVAL_MS) * 100;
+      const currentProgress = (elapsedTime / checkupIntervalMs) * 100;
       setProgress(Math.min(100, currentProgress));
 
       const minutes = Math.floor(remainingTime / 60000);
@@ -68,7 +68,7 @@ const SessionTimer: React.FC<{ session: SleepSession }> = ({ session }) => {
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [session]);
+  }, [session, checkupIntervalMs]);
 
   const needsCheckup = progress >= 100;
 
@@ -89,7 +89,8 @@ export default function TrackerTab({
   activeSessions,
   onStartSleep,
   onCheckup,
-  onEndSleep
+  onEndSleep,
+  checkupIntervalMs
 }: TrackerTabProps) {
   const getActiveSession = (personId: string) =>
     activeSessions.find(session => session.personId === personId && session.status === 'active');
@@ -118,7 +119,7 @@ export default function TrackerTab({
           {people.map((person) => {
             const activeSession = getActiveSession(person.id);
             const timeSinceLastCheckup = activeSession ? getTimeSinceLastCheckup(activeSession) : 0;
-            const needsCheckup = timeSinceLastCheckup >= 10;
+            const needsCheckup = timeSinceLastCheckup >= (checkupIntervalMs / 60000);
 
             return (
               <Card key={person.id} className="p-4 bg-card border-border shadow-md">
@@ -152,7 +153,7 @@ export default function TrackerTab({
                             </div>
                           )}
                         </div>
-                        <SessionTimer session={activeSession} />
+                        <SessionTimer session={activeSession} checkupIntervalMs={checkupIntervalMs} />
                     </div>
                     
                     {needsCheckup && (

@@ -17,12 +17,15 @@ import SettingsTab from '@/components/settings-tab';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 
+const CHECKUP_INTERVAL_MIN = 10;
+const CHECKUP_INTERVAL_MS = CHECKUP_INTERVAL_MIN * 60 * 1000;
+
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("tracker");
   const [people, setPeople] = useState<Person[]>(initialPatients);
   const [activeSessions, setActiveSessions] = useState<SleepSession[]>([]);
   const [logs, setLogs] = useState<SleepLog[]>(initialSleepLogs);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const { toast } = useToast();
   
   const router = useRouter();
@@ -38,6 +41,49 @@ export default function DashboardPage() {
     }
     setLoading(false);
   }, [router]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'granted') {
+        setNotificationsEnabled(true);
+      }
+    }
+  }, []);
+
+  const requestNotificationPermission = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      toast({
+        variant: 'destructive',
+        title: 'Notifications Not Supported',
+        description: 'Your browser does not support desktop notifications.',
+      });
+      return;
+    }
+
+    if (notificationsEnabled) {
+      setNotificationsEnabled(false);
+      toast({ title: "Notifications Disabled", description: "You will no longer receive check-up reminders." });
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      setNotificationsEnabled(true);
+      toast({ title: "Notifications Enabled", description: "You will now be notified for check-ups." });
+      new Notification('MFSFD - Sleep Tracker', {
+        body: 'Notifications have been enabled!',
+        icon: '/logo.png'
+      });
+    } else {
+      setNotificationsEnabled(false);
+      toast({
+        variant: 'destructive',
+        title: 'Permission Denied',
+        description: 'You have blocked notifications. Please enable them in your browser settings.',
+      });
+    }
+  };
+
 
   const handleLogout = () => {
     Cookies.remove('firebaseIdToken');
@@ -67,10 +113,25 @@ export default function DashboardPage() {
     setLogs(prev => [newLog, ...prev]);
   };
 
+  const scheduleNotification = (personName: string, sessionId: string) => {
+    return setTimeout(() => {
+      const sessionStillActive = activeSessions.some(s => s.id === sessionId && s.status === 'active');
+      if (notificationsEnabled && sessionStillActive) {
+        new Notification('Check-up Due!', {
+          body: `It's time to check on ${personName}.`,
+          icon: '/logo.png',
+          tag: sessionId, // Use session ID as tag to prevent duplicate notifications
+        });
+      }
+    }, CHECKUP_INTERVAL_MS);
+  }
+
   const handleStartSleep = (personId: string) => {
     const sessionId = nanoid();
     const person = people.find(p => p.id === personId);
     if (!person) return;
+
+    const notificationTimerId = scheduleNotification(person.name, sessionId);
 
     const newSession: SleepSession = {
       id: sessionId,
@@ -78,7 +139,8 @@ export default function DashboardPage() {
       personName: person.name,
       startTime: new Date(),
       checkups: [],
-      status: 'active'
+      status: 'active',
+      notificationTimerId
     };
 
     setActiveSessions(prev => [...prev, newSession]);
@@ -87,24 +149,38 @@ export default function DashboardPage() {
   };
 
   const handleCheckup = (sessionId: string) => {
+    const session = activeSessions.find(s => s.id === sessionId);
+    if (!session) return;
+    
+    if (session.notificationTimerId) {
+      clearTimeout(session.notificationTimerId);
+    }
+    const newNotificationTimerId = scheduleNotification(session.personName, sessionId);
+
+
     setActiveSessions(prev =>
-      prev.map(session =>
-        session.id === sessionId
-          ? { ...session, checkups: [...session.checkups, new Date()] }
-          : session
+      prev.map(s =>
+        s.id === sessionId
+          ? { 
+              ...s, 
+              checkups: [...s.checkups, new Date()],
+              notificationTimerId: newNotificationTimerId
+            }
+          : s
       )
     );
 
-    const session = activeSessions.find(s => s.id === sessionId);
-    if (session) {
-      addLog(session.personId, 'checkup', sessionId);
-      toast({ title: "Check-up Logged", description: `Check-up for ${session.personName} has been logged.` });
-    }
+    addLog(session.personId, 'checkup', sessionId);
+    toast({ title: "Check-up Logged", description: `Check-up for ${session.personName} has been logged.` });
   };
 
   const handleEndSleep = (sessionId: string) => {
     const session = activeSessions.find(s => s.id === sessionId);
     if (!session) return;
+    
+    if (session.notificationTimerId) {
+      clearTimeout(session.notificationTimerId);
+    }
 
     setActiveSessions(prev => prev.filter(s => s.id !== sessionId));
 
@@ -129,9 +205,6 @@ export default function DashboardPage() {
     toast({ title: "Person Removed", description: `${personName || 'Person'} has been removed.`, variant: 'destructive' });
   };
 
-  const handleToggleNotifications = () => {
-      setNotificationsEnabled(prev => !prev);
-  }
 
   const renderActiveTab = () => {
     switch (activeTab) {
@@ -143,6 +216,7 @@ export default function DashboardPage() {
             onStartSleep={handleStartSleep}
             onCheckup={handleCheckup}
             onEndSleep={handleEndSleep}
+            checkupIntervalMs={CHECKUP_INTERVAL_MS}
           />
         );
       case "archive":
@@ -154,7 +228,7 @@ export default function DashboardPage() {
             onAddPerson={handleAddPerson}
             onRemovePerson={handleRemovePerson}
             notificationsEnabled={notificationsEnabled}
-            onToggleNotifications={handleToggleNotifications}
+            onToggleNotifications={requestNotificationPermission}
           />
         );
       default:
