@@ -24,6 +24,7 @@ export type SleepLog = {
   action: 'start' | 'checkup' | 'end';
   timestamp: Date;
   sessionId: string;
+  notes?: string;
 }
 
 export type ActiveTab = 'tracker' | 'archive' | 'settings';

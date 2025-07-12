@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Play, CheckCircle, Square, Clock, Copy, Archive } from "lucide-react";
+import { Play, CheckCircle, Square, Clock, Copy, Archive, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,7 @@ export default function ArchiveTab({ logs, people }: ArchiveTabProps) {
   const copyToClipboard = () => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       const logText = filteredLogs.map(log =>
-        `${log.timestamp.toLocaleString()} - ${log.personName}: ${log.action.toUpperCase()}`
+        `${log.timestamp.toLocaleString()} - ${log.personName}: ${log.action.toUpperCase()}${log.notes ? `\n  Notes: ${log.notes}` : ''}`
       ).join('\n');
       
       navigator.clipboard.writeText(logText);
@@ -94,8 +94,10 @@ export default function ArchiveTab({ logs, people }: ArchiveTabProps) {
         ) : (
           filteredLogs.map((log) => (
             <Card key={log.id} className="p-3 bg-card border-border shadow-sm">
-              <div className="flex items-center gap-3">
-                {getActionIcon(log.action)}
+              <div className="flex items-start gap-3">
+                <div className="pt-1">
+                  {getActionIcon(log.action)}
+                </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-foreground">{log.personName}</span>
@@ -106,6 +108,15 @@ export default function ArchiveTab({ logs, people }: ArchiveTabProps) {
                   <p className="text-sm text-muted-foreground">
                     {log.timestamp.toLocaleString()}
                   </p>
+                  {log.notes && (
+                    <div className="mt-2 p-2 bg-muted/50 rounded-md text-sm text-foreground border border-border/50">
+                        <p className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-muted-foreground" />
+                          <span className="font-medium">Notes:</span>
+                        </p>
+                      <p className="pl-6 text-muted-foreground">{log.notes}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </Card>

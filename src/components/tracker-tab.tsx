@@ -9,13 +9,14 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { Person, SleepSession } from "@/lib/types";
 import CircularProgress from './circular-progress';
+import EndSessionDialog from './end-session-dialog';
 
 interface TrackerTabProps {
   people: Person[];
   activeSessions: SleepSession[];
   onStartSleep: (personId: string) => void;
   onCheckup: (sessionId: string) => void;
-  onEndSleep: (sessionId: string) => void;
+  onEndSleep: (sessionId: string, notes?: string) => void;
   checkupIntervalMs: number;
 }
 
@@ -177,15 +178,19 @@ export default function TrackerTab({
                         <CheckCircle className="w-4 h-4 mr-2" />
                         Log Checkup ({activeSession.checkups.length})
                       </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => onEndSleep(activeSession.id)}
-                        className="flex-1"
+                      <EndSessionDialog 
+                        personName={person.name} 
+                        onConfirm={(notes) => onEndSleep(activeSession.id, notes)}
                       >
-                        <Square className="w-4 h-4 mr-2" />
-                        End Sleep
-                      </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="flex-1"
+                        >
+                          <Square className="w-4 h-4 mr-2" />
+                          End Sleep
+                        </Button>
+                      </EndSessionDialog>
                     </div>
                   </div>
                 ) : (

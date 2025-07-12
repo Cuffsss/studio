@@ -157,7 +157,7 @@ export default function DashboardPage() {
     { id: "settings", title: "Settings", icon: <Settings className="w-5 h-5" /> }
   ];
 
-  const addLog = (personId: string, action: 'start' | 'checkup' | 'end', sessionId: string) => {
+  const addLog = (personId: string, action: 'start' | 'checkup' | 'end', sessionId: string, notes?: string) => {
     const person = people.find(p => p.id === personId);
     if (!person) return;
 
@@ -167,7 +167,8 @@ export default function DashboardPage() {
       personName: person.name,
       action,
       timestamp: new Date(),
-      sessionId
+      sessionId,
+      notes,
     };
 
     setLogs(prev => [newLog, ...prev]);
@@ -247,7 +248,7 @@ export default function DashboardPage() {
     }
   };
 
-  const handleEndSleep = (sessionId: string) => {
+  const handleEndSleep = (sessionId: string, notes?: string) => {
     const session = activeSessions.find(s => s.id === sessionId);
     if (!session) return;
     
@@ -257,7 +258,7 @@ export default function DashboardPage() {
 
     setActiveSessions(prev => prev.filter(s => s.id !== sessionId));
 
-    addLog(session.personId, 'end', sessionId);
+    addLog(session.personId, 'end', sessionId, notes);
     toast({ title: "Session Ended", description: `Sleep session for ${session.personName} has ended.` });
   };
 
