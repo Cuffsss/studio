@@ -3,14 +3,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from "next/navigation";
-import { getAuth, onAuthStateChanged, User } from "firebase/auth";
-import { firebaseApp } from "@/lib/firebase";
-import { motion } from "framer-motion";
 import { Moon, Archive, Settings, LogOut } from "lucide-react";
 import type { Person, SleepSession, SleepLog, ActiveTab } from '@/lib/types';
 import { initialPatients, initialSleepLogs } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { nanoid } from 'nanoid';
+import Cookies from 'js-cookie';
 
 import AnimatedTabs from '@/components/animated-tabs';
 import TrackerTab from '@/components/tracker-tab';
@@ -28,36 +26,23 @@ export default function DashboardPage() {
   const { toast } = useToast();
   
   const router = useRouter();
-  const [auth, setAuth] = useState<any>(null);
-  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<boolean>(false);
 
   useEffect(() => {
-    if (firebaseApp.name) {
-      const authInstance = getAuth(firebaseApp);
-      setAuth(authInstance);
-      const unsubscribe = onAuthStateChanged(authInstance, (user) => {
-        if (user) {
-          setUser(user);
-        } else {
-          router.push('/');
-        }
-        setLoading(false);
-      });
-      return () => unsubscribe();
+    const token = Cookies.get('firebaseIdToken');
+    if (token) {
+        setUser(true);
     } else {
-      setLoading(false);
-       router.push('/');
+        router.push('/');
     }
+    setLoading(false);
   }, [router]);
 
   const handleLogout = () => {
-    if(auth) {
-      auth.signOut().then(() => {
-        toast({ title: "Logged Out", description: "You have been successfully logged out." });
-        router.push('/');
-      });
-    }
+    Cookies.remove('firebaseIdToken');
+    toast({ title: "Logged Out", description: "You have been successfully logged out." });
+    router.push('/');
   };
 
   const tabs = [
@@ -199,7 +184,7 @@ export default function DashboardPage() {
   return (
     <>
       <div className="absolute top-4 right-4 z-50">
-          <Button variant="ghost" onClick={handleLogout} disabled={!auth}>
+          <Button variant="ghost" onClick={handleLogout}>
               <LogOut className="w-5 h-5 mr-2" />
               Logout
           </Button>

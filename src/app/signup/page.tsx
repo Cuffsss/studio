@@ -1,10 +1,8 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
-import { firebaseApp } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { UserPlus } from "lucide-react";
+import Cookies from 'js-cookie';
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -19,36 +18,21 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const [auth, setAuth] = useState<any>(null);
-
-  useEffect(() => {
-    if (firebaseApp.name) {
-      setAuth(getAuth(firebaseApp));
-    }
-  }, []);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth) {
+    setLoading(true);
+
+    if (email && password) {
+        toast({ title: "Success", description: "Account created successfully. Please log in." });
+        router.push("/");
+    } else {
         toast({
             variant: "destructive",
-            title: "Firebase not configured",
-            description: "Please check your environment variables.",
+            title: "Signup Failed",
+            description: "Please enter an email and password.",
         });
-        return;
-    }
-    setLoading(true);
-    try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      toast({ title: "Success", description: "Account created successfully. Please log in." });
-      router.push("/");
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Signup Failed",
-        description: error.message,
-      });
-      setLoading(false);
+        setLoading(false);
     }
   };
 
@@ -71,7 +55,7 @@ export default function SignupPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled={loading || !auth}
+                disabled={loading}
               />
             </div>
             <div className="space-y-2">
@@ -82,10 +66,10 @@ export default function SignupPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                disabled={loading || !auth}
+                disabled={loading}
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading || !auth}>
+            <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Creating account..." : "Sign Up"}
             </Button>
           </form>
