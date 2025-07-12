@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { Person, SleepSession } from "@/lib/types";
+import CircularProgress from './circular-progress';
 
 interface TrackerTabProps {
   people: Person[];
@@ -16,22 +17,71 @@ interface TrackerTabProps {
   onEndSleep: (sessionId: string) => void;
 }
 
+const CHECKUP_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+
 const TimeSince: React.FC<{ date: Date }> = ({ date }) => {
   const [timeSince, setTimeSince] = useState('');
 
   useEffect(() => {
     const update = () => {
       const now = new Date();
-      const diffMinutes = Math.floor((now.getTime() - new Date(date).getTime()) / (1000 * 60));
-      setTimeSince(`${diffMinutes}m ago`);
+      const diffSeconds = Math.floor((now.getTime() - new Date(date).getTime()) / 1000);
+      
+      if (diffSeconds < 60) {
+        setTimeSince('just now');
+      } else {
+        const diffMinutes = Math.floor(diffSeconds / 60);
+        setTimeSince(`${diffMinutes}m ago`);
+      }
     };
 
     update();
-    const interval = setInterval(update, 60000); // update every minute
+    const interval = setInterval(update, 10000); // update every 10 seconds
     return () => clearInterval(interval);
   }, [date]);
 
   return <span>{timeSince}</span>;
+}
+
+const SessionTimer: React.FC<{ session: SleepSession }> = ({ session }) => {
+  const [progress, setProgress] = useState(0);
+  const [timeLeft, setTimeLeft] = useState('');
+
+  useEffect(() => {
+    const lastCheckupTime = session.checkups.length > 0 
+      ? new Date(session.checkups[session.checkups.length - 1]).getTime()
+      : new Date(session.startTime).getTime();
+
+    const updateTimer = () => {
+      const now = Date.now();
+      const elapsedTime = now - lastCheckupTime;
+      const remainingTime = Math.max(0, CHECKUP_INTERVAL_MS - elapsedTime);
+      
+      const currentProgress = (elapsedTime / CHECKUP_INTERVAL_MS) * 100;
+      setProgress(Math.min(100, currentProgress));
+
+      const minutes = Math.floor(remainingTime / 60000);
+      const seconds = Math.floor((remainingTime % 60000) / 1000);
+      setTimeLeft(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [session]);
+
+  const needsCheckup = progress >= 100;
+
+  return (
+     <div className="flex flex-col items-center gap-2">
+        <CircularProgress progress={progress} needsCheckup={needsCheckup}>
+            <div className="text-center">
+                <div className={cn("text-lg font-bold", needsCheckup ? "text-red-400" : "text-foreground")}>{timeLeft}</div>
+                <div className="text-xs text-muted-foreground">Next checkup</div>
+            </div>
+        </CircularProgress>
+    </div>
+  )
 }
 
 export default function TrackerTab({
@@ -84,8 +134,7 @@ export default function TrackerTab({
                   </div>
                   {activeSession && (
                     <Badge variant={needsCheckup ? "destructive" : "default"} className={cn(
-                      "text-white",
-                      needsCheckup ? "bg-red-500" : "bg-green-500"
+                      needsCheckup ? "bg-red-500 text-white" : "bg-green-500 text-white"
                     )}>
                       {activeSession.status === 'active' ? 'Sleeping' : 'Completed'}
                     </Badge>
@@ -93,20 +142,23 @@ export default function TrackerTab({
                 </div>
 
                 {activeSession ? (
-                  <div className="space-y-3">
-                    <div className="text-sm text-muted-foreground">
-                      Started: {new Date(activeSession.startTime).toLocaleTimeString()}
-                      {activeSession.checkups.length > 0 && (
-                        <span className="ml-4">
-                          Last checkup: <TimeSince date={activeSession.checkups[activeSession.checkups.length - 1]} />
-                        </span>
-                      )}
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          <div>Started: {new Date(activeSession.startTime).toLocaleTimeString()}</div>
+                          {activeSession.checkups.length > 0 && (
+                            <div>
+                              Last check: <TimeSince date={activeSession.checkups[activeSession.checkups.length - 1]} />
+                            </div>
+                          )}
+                        </div>
+                        <SessionTimer session={activeSession} />
                     </div>
                     
                     {needsCheckup && (
-                      <div className="p-2 bg-red-500/10 border border-red-500/20 rounded-md">
+                      <div className="p-2 bg-red-500/10 border border-red-500/20 rounded-md text-center">
                         <p className="text-sm text-red-400 font-medium">
-                          ⚠️ Checkup needed ({timeSinceLastCheckup} minutes since last check)
+                          ⚠️ Checkup due
                         </p>
                       </div>
                     )}
@@ -122,7 +174,7 @@ export default function TrackerTab({
                         )}
                       >
                         <CheckCircle className="w-4 h-4 mr-2" />
-                        Check Up ({activeSession.checkups.length})
+                        Log Checkup ({activeSession.checkups.length})
                       </Button>
                       <Button
                         variant="destructive"
