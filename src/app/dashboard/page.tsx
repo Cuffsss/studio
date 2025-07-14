@@ -191,7 +191,7 @@ export default function DashboardPage() {
           });
           
           // Play notification sound
-          const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-clear-interface-beep-1211.mp3');
+          const audio = new Audio('https://www.soundjay.com/buttons/sounds/beep-07a.mp3');
           audio.play().catch(error => {
             console.error("Failed to play notification sound:", error);
             // This error often happens if the user hasn't interacted with the page first.
