@@ -1,4 +1,21 @@
 
+export type Role = 'admin' | 'member';
+
+export type User = {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  organizationId: string;
+}
+
+export type Organization = {
+  id: string;
+  name: string;
+  ownerId: string;
+  members: User[];
+}
+
 export type Person = {
   id: string;
   name: string;
@@ -28,4 +45,4 @@ export type SleepLog = {
   notes?: string;
 }
 
-export type ActiveTab = 'tracker' | 'archive' | 'settings' | 'reports';
+export type ActiveTab = 'tracker' | 'archive' | 'settings' | 'reports' | 'organization';

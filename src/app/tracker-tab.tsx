@@ -8,8 +8,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { Person, SleepSession } from "@/lib/types";
-import CircularProgress from './circular-progress';
-import EndSessionDialog from './end-session-dialog';
+import CircularProgress from '@/components/circular-progress';
+import EndSessionDialog from '@/components/end-session-dialog';
 
 interface TrackerTabProps {
   people: Person[];
@@ -105,7 +105,7 @@ export default function TrackerTab({
   return (
     <div className="p-4 pb-24 space-y-4">
       <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold text-foreground">MFSFD - Sleep Tracker</h1>
+        <h1 className="text-2xl font-bold text-foreground">Sleep Tracker</h1>
         <p className="text-muted-foreground">Monitor sleep sessions for people in your care</p>
       </div>
 

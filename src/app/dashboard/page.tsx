@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from "next/navigation";
-import { Moon, Archive, Settings, LogOut, LineChart } from "lucide-react";
+import { Moon, Archive, Settings, LogOut, LineChart, Building } from "lucide-react";
 import type { Person, SleepSession, SleepLog, ActiveTab } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { nanoid } from 'nanoid';
@@ -14,6 +14,7 @@ import TrackerTab from '@/components/tracker-tab';
 import ArchiveTab from '@/components/archive-tab';
 import SettingsTab from '@/components/settings-tab';
 import ReportsTab from '@/components/reports-tab';
+import OrganizationTab from '@/components/organization-tab';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -156,6 +157,7 @@ export default function DashboardPage() {
     { id: "tracker", title: "Tracker", icon: <Moon className="w-5 h-5" /> },
     { id: "reports", title: "Reports", icon: <LineChart className="w-5 h-5" /> },
     { id: "archive", title: "Archive", icon: <Archive className="w-5 h-5" /> },
+    { id: "organization", title: "Organization", icon: <Building className="w-5 h-5" /> },
     { id: "settings", title: "Settings", icon: <Settings className="w-5 h-5" /> }
   ];
 
@@ -305,6 +307,8 @@ export default function DashboardPage() {
         return <ArchiveTab logs={logs} people={people} />;
       case "reports":
         return <ReportsTab logs={logs} people={people} />;
+      case "organization":
+        return <OrganizationTab />;
       case "settings":
         return (
           <SettingsTab
