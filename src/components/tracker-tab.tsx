@@ -105,7 +105,7 @@ export default function TrackerTab({
   return (
     <div className="p-4 pb-24 space-y-4">
       <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold text-foreground">MFSFD - Sleep Tracker</h1>
+        <h1 className="text-2xl font-bold text-foreground">Sleep Tracker</h1>
         <p className="text-muted-foreground">Monitor sleep sessions for people in your care</p>
       </div>
 

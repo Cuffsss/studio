@@ -11,7 +11,7 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: 'MFSFD - Sleep Tracker',
+  title: 'Sleep Tracker',
   description: 'A simple app to track sleep sessions.',
   icons: {
     icon: '/logo.png',

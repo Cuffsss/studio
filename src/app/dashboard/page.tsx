@@ -131,7 +131,7 @@ export default function DashboardPage() {
     if (permission === 'granted') {
       setNotificationsEnabled(true);
       toast({ title: "Notifications Enabled", description: "You will now be notified for check-ups." });
-      new Notification('MFSFD - Sleep Tracker', {
+      new Notification('Sleep Tracker', {
         body: 'Notifications have been enabled!',
         icon: '/logo.png'
       });
@@ -346,7 +346,7 @@ export default function DashboardPage() {
   return (
     <>
       <div className="absolute top-4 right-4 z-50 flex items-center gap-4">
-          <h1 className="text-lg font-semibold text-foreground hidden sm:block">MFSFD - Sleep Tracker</h1>
+          <h1 className="text-lg font-semibold text-foreground hidden sm:block">Sleep Tracker</h1>
       </div>
       {renderActiveTab()}
       <AnimatedTabs items={tabs} active={activeTab} setActiveTab={setActiveTab} />

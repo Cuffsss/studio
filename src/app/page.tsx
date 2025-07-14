@@ -55,7 +55,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <Moon className="mx-auto h-12 w-12 text-primary" />
-          <h1 className="text-2xl font-bold mt-4">MFSFD - Sleep Tracker</h1>
+          <h1 className="text-2xl font-bold mt-4">Sleep Tracker</h1>
           <CardTitle className="mt-2 text-xl font-medium">Welcome Back</CardTitle>
           <CardDescription>Log in to track sleep sessions.</CardDescription>
         </CardHeader>
