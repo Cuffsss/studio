@@ -2,13 +2,13 @@
 "use client";
 
 import { useState } from 'react';
-import { Bell, User, Trash2, Sun, Moon, Laptop, Clock, Edit, LogOut, Building, Link as LinkIcon, Copy, UserPlus, BellRing } from "lucide-react";
+import { Bell, User, Trash2, Sun, Moon, Laptop, Clock, Edit, LogOut, Building, Copy, BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import AddPersonDialog from './add-user-dialog';
 import EditPersonDialog from './edit-person-dialog';
-import type { Person, Organization } from "@/lib/types";
+import type { Person, Organization, User } from "@/lib/types";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useTheme } from "next-themes";
 import { Input } from './ui/input';
@@ -29,6 +29,7 @@ interface SettingsTabProps {
   organization: Organization | null;
   onCreateOrganization: (name: string) => void;
   onLogout: () => void;
+  currentUser: User | null;
 }
 
 export default function SettingsTab({
@@ -45,6 +46,7 @@ export default function SettingsTab({
   organization,
   onCreateOrganization,
   onLogout,
+  currentUser,
 }: SettingsTabProps) {
   const { setTheme } = useTheme();
   const [checkupInterval, setCheckupInterval] = useState(checkupIntervalMin.toString());
@@ -73,7 +75,7 @@ export default function SettingsTab({
         return;
     }
     setOrgLoading(true);
-    // Simulate API call
+    // In a real app, this would be an API call
     setTimeout(() => {
         onCreateOrganization(newOrgName);
         setNewOrgName('');
@@ -81,7 +83,7 @@ export default function SettingsTab({
     }, 1000);
   };
 
-  const inviteLink = organization ? `${window.location.origin}/signup/${organization.id}` : '';
+  const inviteLink = (typeof window !== 'undefined' && organization) ? `${window.location.origin}/signup?invite=${organization.id}` : '';
 
   const copyInviteLink = () => {
     if (typeof window !== 'undefined') {
@@ -95,8 +97,16 @@ export default function SettingsTab({
     <div className="p-4 pb-24 space-y-6">
       <div className="text-center mb-6">
         <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-        <p className="text-muted-foreground">Manage your sleep tracking preferences</p>
+        <p className="text-muted-foreground">Manage your account, organization, and app preferences</p>
       </div>
+
+       <Card className="p-4 bg-card border-border shadow-md">
+        <h3 className="font-semibold mb-2 text-foreground">My Account</h3>
+        <div className="text-sm text-muted-foreground">
+            <p>Email: <span className="font-medium text-foreground">{currentUser?.email}</span></p>
+        </div>
+      </Card>
+
 
       <Card className="p-4 bg-card border-border shadow-md">
         <h3 className="font-semibold mb-2 text-foreground">Theme</h3>
@@ -179,7 +189,7 @@ export default function SettingsTab({
         </h3>
         
         <div className="space-y-3 mb-4">
-          {people.map((person) => (
+          {people.length > 0 ? people.map((person) => (
             <div key={person.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border">
               <div>
                 <p className="font-medium text-foreground">{person.name}</p>
@@ -221,7 +231,7 @@ export default function SettingsTab({
                 </AlertDialog>
               </div>
             </div>
-          ))}
+          )) : <p className="text-sm text-muted-foreground text-center py-4">No people added yet. Add someone to start tracking.</p>}
         </div>
 
         <AddPersonDialog onAddPerson={onAddPerson} />
@@ -286,7 +296,7 @@ export default function SettingsTab({
           </div>
       </Card>
 
-      <Button variant="outline" onClick={onLogout} className="w-full">
+      <Button variant="destructive" onClick={onLogout} className="w-full">
         <LogOut className="w-4 h-4 mr-2" />
         Logout
       </Button>

@@ -7,7 +7,8 @@ import { Moon, Archive, Settings, LogOut, LineChart } from "lucide-react";
 import type { Person, SleepSession, SleepLog, ActiveTab, Organization, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { nanoid } from 'nanoid';
-import Cookies from 'js-cookie';
+import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
+import { firebaseApp } from '@/lib/firebase';
 
 import AnimatedTabs from '@/components/animated-tabs';
 import TrackerTab from '@/components/tracker-tab';
@@ -19,51 +20,21 @@ import { Skeleton } from '@/components/ui/skeleton';
 const DEFAULT_CHECKUP_INTERVAL_MIN = 10;
 const DEFAULT_ALARM_INTERVAL_MIN = 2;
 
+// NOTE: All data is now ephemeral and will be reset on page load.
+// This sets the stage for a database integration.
 
-const MOCK_USERS: User[] = [
-    { id: 'user_1', name: 'Alice (Admin)', email: 'alice@example.com', role: 'admin', organizationId: 'org_123_abc'},
-    { id: 'user_2', name: 'Bob', email: 'bob@example.com', role: 'member', organizationId: 'org_123_abc' },
-];
-
-
-// Helper function to get data from localStorage
-const getFromLocalStorage = <T>(key: string, defaultValue: T): T => {
-  if (typeof window === 'undefined') {
-    return defaultValue;
-  }
-  const item = localStorage.getItem(key);
-  if (item) {
-    try {
-      // Reviver function to convert date strings back to Date objects
-      return JSON.parse(item, (key, value) => {
-        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/.test(value)) {
-          return new Date(value);
-        }
-        return value;
-      });
-    } catch (e) {
-      console.error(`Error parsing localStorage item "${key}":`, e);
-      return defaultValue;
-    }
-  }
-  return defaultValue;
-};
-
-// Helper function to set data in localStorage
-const setInLocalStorage = <T>(key: string, value: T) => {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(key, JSON.stringify(value));
-  }
-};
+const getInitialPeople = (): Person[] => [];
+const getInitialLogs = (): SleepLog[] => [];
+const getInitialOrganization = (): Organization | null => null;
 
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("tracker");
   
-  const [people, setPeople] = useState<Person[]>([]);
+  const [people, setPeople] = useState<Person[]>(getInitialPeople());
   const [activeSessions, setActiveSessions] = useState<SleepSession[]>([]);
-  const [logs, setLogs] = useState<SleepLog[]>([]);
-  const [organization, setOrganization] = useState<Organization | null>(null);
+  const [logs, setLogs] = useState<SleepLog[]>(getInitialLogs());
+  const [organization, setOrganization] = useState<Organization | null>(getInitialOrganization());
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [checkupIntervalMin, setCheckupIntervalMin] = useState(DEFAULT_CHECKUP_INTERVAL_MIN);
@@ -73,65 +44,37 @@ export default function DashboardPage() {
   
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  // Load initial data from localStorage
+  // Auth state listener
   useEffect(() => {
-    setPeople(getFromLocalStorage('people', []));
-    setActiveSessions(getFromLocalStorage('activeSessions', []));
-    setLogs(getFromLocalStorage('logs', []));
-    setCheckupIntervalMin(getFromLocalStorage('checkupIntervalMin', DEFAULT_CHECKUP_INTERVAL_MIN));
-    setAlarmIntervalMin(getFromLocalStorage('alarmIntervalMin', DEFAULT_ALARM_INTERVAL_MIN));
-    setOrganization(getFromLocalStorage('organization', {
-      id: 'org_123_abc',
-      name: 'Happy Kids Daycare',
-      ownerId: 'user_1',
-      members: MOCK_USERS,
-    }));
+    const auth = getAuth(firebaseApp);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // In a real app, you'd fetch user profile from your database here
+        setCurrentUser({
+          id: user.uid,
+          email: user.email || 'No email',
+          name: user.displayName || 'Anonymous',
+          role: 'admin', // default role for now
+          organizationId: '', // would be fetched
+        });
+        setLoading(false);
+      } else {
+        router.push('/login');
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
 
 
-    // Check notification permission
+  // Check notification permission
+  useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
       setNotificationsEnabled(true);
     }
   }, []);
 
-  // Save data to localStorage whenever it changes
-  useEffect(() => {
-    setInLocalStorage('people', people);
-  }, [people]);
-
-  useEffect(() => {
-    setInLocalStorage('activeSessions', activeSessions);
-  }, [activeSessions]);
-
-  useEffect(() => {
-    setInLocalStorage('logs', logs);
-  }, [logs]);
-
-  useEffect(() => {
-    setInLocalStorage('checkupIntervalMin', checkupIntervalMin);
-  }, [checkupIntervalMin]);
-  
-  useEffect(() => {
-    setInLocalStorage('alarmIntervalMin', alarmIntervalMin);
-  }, [alarmIntervalMin]);
-
-  useEffect(() => {
-    setInLocalStorage('organization', organization);
-  }, [organization]);
-
-
-  useEffect(() => {
-    const token = Cookies.get('firebaseIdToken');
-    if (token) {
-        setUser(true);
-    } else {
-        router.push('/');
-    }
-    setLoading(false);
-  }, [router]);
-  
   const handleSetCheckupInterval = (minutes: number) => {
     setCheckupIntervalMin(minutes);
     toast({ title: "Settings Updated", description: `Check-up interval set to ${minutes} minutes.` });
@@ -177,10 +120,15 @@ export default function DashboardPage() {
   };
 
 
-  const handleLogout = () => {
-    Cookies.remove('firebaseIdToken');
-    toast({ title: "Logged Out", description: "You have been successfully logged out." });
-    router.push('/');
+  const handleLogout = async () => {
+    const auth = getAuth(firebaseApp);
+    try {
+      await signOut(auth);
+      toast({ title: "Logged Out", description: "You have been successfully logged out." });
+      router.push('/login');
+    } catch (error) {
+       toast({ variant: 'destructive', title: "Logout Failed", description: "An error occurred while logging out." });
+    }
   };
 
   const tabs = [
@@ -231,7 +179,6 @@ export default function DashboardPage() {
               const audio = new Audio('https://www.soundjay.com/buttons/sounds/beep-07a.mp3');
               audio.play().catch(console.error);
 
-              // Schedule the next alarm
               const newTimerId = scheduleOverdueAlarm(personName, sessionId);
               return currentActiveSessions.map(s => s.id === sessionId ? { ...s, notificationTimerId: newTimerId } : s);
           }
@@ -248,14 +195,12 @@ export default function DashboardPage() {
         setActiveSessions(currentActiveSessions => {
             const session = currentActiveSessions.find(s => s.id === sessionId);
             if (session && session.status === 'active' && notificationsEnabled) {
-                // Send push notification for "Check-up Due"
                 new Notification('Check-up Due!', {
                     body: `It's time to check on ${personName}.`,
                     icon: '/logo.png',
                     tag: sessionId,
                 });
 
-                // Now schedule the first audible alarm
                 const newTimerId = scheduleOverdueAlarm(personName, sessionId);
                 return currentActiveSessions.map(s => s.id === sessionId ? { ...s, notificationTimerId: newTimerId } : s);
             }
@@ -290,11 +235,9 @@ export default function DashboardPage() {
     setActiveSessions(prev =>
       prev.map(s => {
         if (s.id === sessionId) {
-          // Clear any existing timers (checkup or alarm)
           if (s.notificationTimerId) {
             clearTimeout(s.notificationTimerId);
           }
-          // Schedule the *next* checkup notification
           const newNotificationTimerId = scheduleCheckupNotification(s.personName, sessionId);
           return {
             ...s,
@@ -353,8 +296,8 @@ export default function DashboardPage() {
       const newOrg: Organization = {
           id: `org_${nanoid()}`,
           name: orgName.trim(),
-          ownerId: 'user_current', // Should be current user's ID
-          members: [],
+          ownerId: currentUser?.id || 'unknown',
+          members: currentUser ? [currentUser] : [],
       };
       setOrganization(newOrg);
       toast({ title: 'Success', description: 'Organization created successfully!' });
@@ -395,6 +338,7 @@ export default function DashboardPage() {
             organization={organization}
             onCreateOrganization={handleCreateOrganization}
             onLogout={handleLogout}
+            currentUser={currentUser}
           />
         );
       default:
@@ -404,21 +348,13 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="p-4 pb-24 space-y-4">
-        <div className="text-center mb-6">
-          <Skeleton className="h-8 w-48 mx-auto" />
-          <Skeleton className="h-4 w-64 mx-auto mt-2" />
-        </div>
-        <div className="space-y-3">
-          <Skeleton className="h-40 w-full rounded-lg" />
-          <Skeleton className="h-40 w-full rounded-lg" />
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+              <Moon className="w-12 h-12 mx-auto mb-4 text-primary animate-pulse" />
+              <p className="text-muted-foreground">Loading Dashboard...</p>
+          </div>
       </div>
     );
-  }
-
-  if (!user) {
-    return null; // Or a redirect component
   }
   
   return (
@@ -431,5 +367,3 @@ export default function DashboardPage() {
     </>
   );
 };
-
-    

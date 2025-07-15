@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
@@ -12,7 +13,7 @@ const poppins = Poppins({
 
 export const metadata: Metadata = {
   title: 'Sleep Tracker',
-  description: 'A simple app to track sleep sessions.',
+  description: 'Reliable sleep tracking for professional care providers.',
   icons: {
     icon: '/logo.png',
   }
