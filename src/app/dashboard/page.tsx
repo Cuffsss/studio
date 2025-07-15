@@ -7,7 +7,7 @@ import { Moon, Archive, Settings, LogOut, LineChart } from "lucide-react";
 import type { Person, SleepSession, SleepLog, ActiveTab, Organization, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { nanoid } from 'nanoid';
-import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
+import { getAuth, onAuthStateChanged, signOut, getIdToken } from "firebase/auth";
 import { firebaseApp } from '@/lib/firebase';
 
 import AnimatedTabs from '@/components/animated-tabs';
@@ -49,17 +49,30 @@ export default function DashboardPage() {
   // Auth state listener
   useEffect(() => {
     const auth = getAuth(firebaseApp);
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // In a real app, you'd fetch user profile from your database here
-        setCurrentUser({
-          id: user.uid,
-          email: user.email || 'No email',
-          name: user.displayName || 'Anonymous',
-          role: 'admin', // default role for now
-          organizationId: '', // would be fetched
+        // Verify token with backend
+        const token = await user.getIdToken();
+        const response = await fetch('/api/auth/verify', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
         });
-        setLoading(false);
+
+        if (response.ok) {
+            const userData = await response.json();
+             setCurrentUser({
+                id: userData.uid,
+                email: userData.email || 'No email',
+                name: userData.name || 'Anonymous',
+                role: 'admin', // default role for now
+                organizationId: '', // would be fetched
+            });
+            setLoading(false);
+        } else {
+            // Token verification failed, log out
+            await signOut(auth);
+            router.push('/login');
+        }
       } else {
         router.push('/login');
       }
@@ -124,8 +137,7 @@ export default function DashboardPage() {
     const auth = getAuth(firebaseApp);
     try {
       await signOut(auth);
-      toast({ title: "Logged Out", description: "You have been successfully logged out." });
-      router.push('/login');
+      // The onAuthStateChanged listener will handle the redirect
     } catch (error) {
        toast({ variant: 'destructive', title: "Logout Failed", description: "An error occurred while logging out." });
     }
@@ -351,7 +363,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
               <Moon className="w-12 h-12 mx-auto mb-4 text-primary animate-pulse" />
-              <p className="text-muted-foreground">Loading Dashboard...</p>
+              <p className="text-muted-foreground">Verifying Session...</p>
           </div>
       </div>
     );
