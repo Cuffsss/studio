@@ -1,62 +1,50 @@
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirebaseAdminApp } from '@/lib/firebase-admin';
+import { adminAuth } from '@/lib/firebase-admin';
 
 export const runtime = 'nodejs';
 
-// This function can be marked `async` if using `await` inside
 export async function middleware(request: NextRequest) {
-  // Initialize Firebase Admin on each request
-  const adminApp = getFirebaseAdminApp();
-
   const { pathname } = request.nextUrl;
   const token = request.cookies.get('firebaseIdToken')?.value;
 
-  // Pages that don't require authentication
   const publicPaths = ['/login', '/signup', '/pricing', '/'];
+
+  // If accessing a public path
   if (publicPaths.includes(pathname)) {
-    // If user is logged in and tries to access a public page, redirect to dashboard
     if (token) {
-        try {
-            // We quickly verify token to avoid redirect loops if token is invalid
-            await getAuth(adminApp).verifyIdToken(token);
-            if (pathname !== '/dashboard') {
-                return NextResponse.redirect(new URL('/dashboard', request.url));
-            }
-        } catch (error) {
-             // Token is invalid, let them proceed to the public page
-            const response = NextResponse.next();
-            response.cookies.delete('firebaseIdToken');
-            return response;
-        }
+      try {
+        await adminAuth.verifyIdToken(token);
+        // If token is valid and user is on a public page, redirect to dashboard
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+      } catch (error) {
+        // Invalid token, clear it and let them proceed to public page
+        const response = NextResponse.next();
+        response.cookies.delete('firebaseIdToken');
+        return response;
+      }
     }
     return NextResponse.next();
   }
 
-  // All other pages require authentication
+  // If accessing a protected path
   if (!token) {
-    // If no token, redirect to login page
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // If there's a token, we must verify it server-side.
   try {
-    await getAuth(adminApp).verifyIdToken(token);
-    // Token is valid, allow request to proceed
+    await adminAuth.verifyIdToken(token);
+    // Token is valid, proceed
     return NextResponse.next();
   } catch (error) {
-    // Token is invalid (e.g., expired), redirect to login
     console.error("Auth token verification failed:", error);
     const response = NextResponse.redirect(new URL('/login', request.url));
-    // Clear the invalid cookie
     response.cookies.delete('firebaseIdToken');
     return response;
   }
 }
 
-// See "Matching Paths" below to learn more
 export const config = {
   matcher: [
     /*
