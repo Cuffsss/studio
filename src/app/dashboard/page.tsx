@@ -207,45 +207,69 @@ export default function DashboardPage() {
     setLogs(prev => [newLog, ...prev]);
   };
 
-  const scheduleNotification = (personName: string, sessionId: string, isFirstCheckup: boolean) => {
-    const intervalMs = isFirstCheckup ? checkupIntervalMin * 60 * 1000 : alarmIntervalMin * 60 * 1000;
+  const scheduleOverdueAlarm = (personName: string, sessionId: string) => {
+    const alarmIntervalMs = alarmIntervalMin * 60 * 1000;
   
     return setTimeout(() => {
-      // Use a functional update to get the latest state inside the timeout
       setActiveSessions(currentActiveSessions => {
-        const sessionStillActive = currentActiveSessions.some(s => s.id === sessionId && s.status === 'active');
-        
-        if (notificationsEnabled && sessionStillActive) {
-          const notificationTitle = isFirstCheckup ? 'Check-up Due!' : 'Checkup Overdue!';
-          new Notification(notificationTitle, {
-            body: `It's time to check on ${personName}.`,
-            icon: '/logo.png',
-            tag: sessionId, // Use session ID as tag to prevent duplicate notifications
-            renotify: true, // Allow re-notification for overdue alerts
-          });
+        const session = currentActiveSessions.find(s => s.id === sessionId);
+        if (session && session.status === 'active' && notificationsEnabled) {
+          const lastEventTime = session.checkups.length > 0
+            ? new Date(session.checkups[session.checkups.length - 1]).getTime()
+            : new Date(session.startTime).getTime();
           
-          const audio = new Audio('https://www.soundjay.com/buttons/sounds/beep-07a.mp3');
-          audio.play().catch(console.error);
+          const isStillOverdue = (Date.now() - lastEventTime) >= (checkupIntervalMin * 60 * 1000);
 
-          // Schedule the next overdue alarm
-          const newTimerId = scheduleNotification(personName, sessionId, false);
-          
-          return currentActiveSessions.map(s => 
-            s.id === sessionId ? { ...s, notificationTimerId: newTimerId } : s
-          );
+          if (isStillOverdue) {
+              new Notification('Checkup Overdue!', {
+                  body: `Please check on ${personName}. The alarm will sound again in ${alarmIntervalMin} minutes.`,
+                  icon: '/logo.png',
+                  tag: sessionId,
+                  renotify: true,
+              });
+  
+              const audio = new Audio('https://www.soundjay.com/buttons/sounds/beep-07a.mp3');
+              audio.play().catch(console.error);
+
+              // Schedule the next alarm
+              const newTimerId = scheduleOverdueAlarm(personName, sessionId);
+              return currentActiveSessions.map(s => s.id === sessionId ? { ...s, notificationTimerId: newTimerId } : s);
+          }
         }
         return currentActiveSessions;
       });
-    }, intervalMs);
+    }, alarmIntervalMs);
   };
   
+  const scheduleCheckupNotification = (personName: string, sessionId: string) => {
+    const checkupIntervalMs = checkupIntervalMin * 60 * 1000;
+  
+    return setTimeout(() => {
+        setActiveSessions(currentActiveSessions => {
+            const session = currentActiveSessions.find(s => s.id === sessionId);
+            if (session && session.status === 'active' && notificationsEnabled) {
+                // Send push notification for "Check-up Due"
+                new Notification('Check-up Due!', {
+                    body: `It's time to check on ${personName}.`,
+                    icon: '/logo.png',
+                    tag: sessionId,
+                });
 
+                // Now schedule the first audible alarm
+                const newTimerId = scheduleOverdueAlarm(personName, sessionId);
+                return currentActiveSessions.map(s => s.id === sessionId ? { ...s, notificationTimerId: newTimerId } : s);
+            }
+            return currentActiveSessions;
+        });
+    }, checkupIntervalMs);
+  };
+  
   const handleStartSleep = (personId: string) => {
     const sessionId = nanoid();
     const person = people.find(p => p.id === personId);
     if (!person) return;
 
-    const notificationTimerId = scheduleNotification(person.name, sessionId, true);
+    const notificationTimerId = scheduleCheckupNotification(person.name, sessionId);
 
     const newSession: SleepSession = {
       id: sessionId,
@@ -266,12 +290,12 @@ export default function DashboardPage() {
     setActiveSessions(prev =>
       prev.map(s => {
         if (s.id === sessionId) {
-          // Clear any existing timers (both checkup and alarm)
+          // Clear any existing timers (checkup or alarm)
           if (s.notificationTimerId) {
             clearTimeout(s.notificationTimerId);
           }
-          // Schedule the *next* checkup
-          const newNotificationTimerId = scheduleNotification(s.personName, sessionId, true);
+          // Schedule the *next* checkup notification
+          const newNotificationTimerId = scheduleCheckupNotification(s.personName, sessionId);
           return {
             ...s,
             checkups: [...s.checkups, new Date()],
@@ -407,3 +431,5 @@ export default function DashboardPage() {
     </>
   );
 };
+
+    
