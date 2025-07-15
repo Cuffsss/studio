@@ -4,8 +4,13 @@ import type { NextRequest } from 'next/server';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirebaseAdminApp } from './lib/firebase-admin';
 
+export const runtime = 'nodejs';
+
 // This function can be marked `async` if using `await` inside
 export async function middleware(request: NextRequest) {
+  // Initialize Firebase Admin on each request
+  const adminApp = getFirebaseAdminApp();
+
   const { pathname } = request.nextUrl;
   const token = request.cookies.get('firebaseIdToken')?.value;
 
@@ -16,12 +21,13 @@ export async function middleware(request: NextRequest) {
     if (token) {
         try {
             // We quickly verify token to avoid redirect loops if token is invalid
-            getFirebaseAdminApp();
-            await getAuth().verifyIdToken(token);
+            await getAuth(adminApp).verifyIdToken(token);
             return NextResponse.redirect(new URL('/dashboard', request.url));
         } catch (error) {
              // Token is invalid, let them proceed to the public page
-            return NextResponse.next();
+            const response = NextResponse.next();
+            response.cookies.delete('firebaseIdToken');
+            return response;
         }
     }
     return NextResponse.next();
@@ -35,8 +41,7 @@ export async function middleware(request: NextRequest) {
 
   // If there's a token, we must verify it server-side.
   try {
-    getFirebaseAdminApp(); // Initialize admin app if not already done
-    await getAuth().verifyIdToken(token);
+    await getAuth(adminApp).verifyIdToken(token);
     // Token is valid, allow request to proceed
     return NextResponse.next();
   } catch (error) {
