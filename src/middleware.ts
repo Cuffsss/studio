@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getAuth } from 'firebase-admin/auth';
-import { getFirebaseAdminApp } from './lib/firebase-admin';
+import { getFirebaseAdminApp } from '@/lib/firebase-admin';
 
 export const runtime = 'nodejs';
 
@@ -22,7 +22,9 @@ export async function middleware(request: NextRequest) {
         try {
             // We quickly verify token to avoid redirect loops if token is invalid
             await getAuth(adminApp).verifyIdToken(token);
-            return NextResponse.redirect(new URL('/dashboard', request.url));
+            if (pathname !== '/dashboard') {
+                return NextResponse.redirect(new URL('/dashboard', request.url));
+            }
         } catch (error) {
              // Token is invalid, let them proceed to the public page
             const response = NextResponse.next();

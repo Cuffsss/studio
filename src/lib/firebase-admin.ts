@@ -1,8 +1,6 @@
 
 import * as admin from 'firebase-admin';
 
-// This function initializes and returns the Firebase Admin app instance.
-// It ensures that the app is initialized only once.
 export function getFirebaseAdminApp() {
   if (admin.apps.length > 0) {
     return admin.apps[0]!;
@@ -13,6 +11,9 @@ export function getFirebaseAdminApp() {
     : undefined;
 
   if (!serviceAccount) {
+    // This check is important, but in a serverless environment, you might
+    // rely on default credentials provided by the infrastructure.
+    // For this app, we'll require the service account to be set.
     throw new Error('Firebase service account credentials are not set in the environment variables.');
   }
 
