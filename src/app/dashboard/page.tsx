@@ -48,6 +48,16 @@ export default function DashboardPage() {
 
   // Auth state listener
   useEffect(() => {
+    if (!firebaseApp.options?.apiKey) {
+      toast({
+          variant: "destructive",
+          title: "Configuration Error",
+          description: "Firebase is not configured. Please add environment variables.",
+      });
+      setLoading(false); // Stop loading, but don't redirect
+      return;
+    }
+
     const auth = getAuth(firebaseApp);
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -78,7 +88,7 @@ export default function DashboardPage() {
       }
     });
     return () => unsubscribe();
-  }, [router]);
+  }, [router, toast]);
 
 
   // Check notification permission
@@ -134,6 +144,10 @@ export default function DashboardPage() {
 
 
   const handleLogout = async () => {
+    if (!firebaseApp.options?.apiKey) {
+      router.push('/login');
+      return;
+    }
     const auth = getAuth(firebaseApp);
     try {
       await signOut(auth);

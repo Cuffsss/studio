@@ -24,6 +24,16 @@ export default function SignupPage() {
     e.preventDefault();
     setLoading(true);
 
+     if (!firebaseApp.options?.apiKey) {
+      toast({
+        variant: "destructive",
+        title: "Configuration Error",
+        description: "Firebase is not configured. Please add environment variables.",
+      });
+      setLoading(false);
+      return;
+    }
+
     if (password.length < 6) {
         toast({
             variant: "destructive",
