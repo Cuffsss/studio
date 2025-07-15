@@ -25,29 +25,32 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
 
-    try {
-      if (email && password) {
-        toast({ title: "Success", description: "Logged in successfully." });
-        const options: Cookies.CookieAttributes = rememberMe ? { expires: 7 } : {};
-        Cookies.set('firebaseIdToken', 'mock-token-for-dev', options);
-        router.push("/dashboard");
-      } else {
-         toast({
-          variant: "destructive",
-          title: "Login Failed",
-          description: "Please enter an email and password.",
-        });
-        setLoading(false);
-      }
-    } catch (error) {
-        console.error("Login error:", error);
-        toast({
-            variant: "destructive",
-            title: "An Error Occurred",
-            description: "Something went wrong. Please try again.",
-        });
-        setLoading(false);
-    }
+    // Simulate network delay
+    setTimeout(() => {
+        try {
+          if (email && password) {
+            toast({ title: "Success", description: "Logged in successfully." });
+            const options: Cookies.CookieAttributes = rememberMe ? { expires: 7 } : {};
+            Cookies.set('firebaseIdToken', 'mock-token-for-dev', options);
+            router.push("/dashboard");
+          } else {
+             toast({
+              variant: "destructive",
+              title: "Login Failed",
+              description: "Please enter an email and password.",
+            });
+            setLoading(false);
+          }
+        } catch (error) {
+            console.error("Login error:", error);
+            toast({
+                variant: "destructive",
+                title: "An Error Occurred",
+                description: "Something went wrong. Please try again.",
+            });
+            setLoading(false);
+        }
+    }, 500); // 500ms delay
   };
 
   return (
