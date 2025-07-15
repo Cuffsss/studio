@@ -3,8 +3,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from "next/navigation";
-import { Moon, Archive, Settings, LogOut, LineChart, Building } from "lucide-react";
-import type { Person, SleepSession, SleepLog, ActiveTab } from '@/lib/types';
+import { Moon, Archive, Settings, LogOut, LineChart } from "lucide-react";
+import type { Person, SleepSession, SleepLog, ActiveTab, Organization, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { nanoid } from 'nanoid';
 import Cookies from 'js-cookie';
@@ -14,11 +14,15 @@ import TrackerTab from '@/components/tracker-tab';
 import ArchiveTab from '@/components/archive-tab';
 import SettingsTab from '@/components/settings-tab';
 import ReportsTab from '@/components/reports-tab';
-import OrganizationTab from '@/components/organization-tab';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const DEFAULT_CHECKUP_INTERVAL_MIN = 10;
+
+const MOCK_USERS: User[] = [
+    { id: 'user_1', name: 'Alice (Admin)', email: 'alice@example.com', role: 'admin', organizationId: 'org_123_abc'},
+    { id: 'user_2', name: 'Bob', email: 'bob@example.com', role: 'member', organizationId: 'org_123_abc' },
+];
+
 
 // Helper function to get data from localStorage
 const getFromLocalStorage = <T>(key: string, defaultValue: T): T => {
@@ -57,6 +61,7 @@ export default function DashboardPage() {
   const [people, setPeople] = useState<Person[]>([]);
   const [activeSessions, setActiveSessions] = useState<SleepSession[]>([]);
   const [logs, setLogs] = useState<SleepLog[]>([]);
+  const [organization, setOrganization] = useState<Organization | null>(null);
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [checkupIntervalMin, setCheckupIntervalMin] = useState(DEFAULT_CHECKUP_INTERVAL_MIN);
@@ -72,6 +77,13 @@ export default function DashboardPage() {
     setActiveSessions(getFromLocalStorage('activeSessions', []));
     setLogs(getFromLocalStorage('logs', []));
     setCheckupIntervalMin(getFromLocalStorage('checkupIntervalMin', DEFAULT_CHECKUP_INTERVAL_MIN));
+    setOrganization(getFromLocalStorage('organization', {
+      id: 'org_123_abc',
+      name: 'Happy Kids Daycare',
+      ownerId: 'user_1',
+      members: MOCK_USERS,
+    }));
+
 
     // Check notification permission
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
@@ -95,6 +107,10 @@ export default function DashboardPage() {
   useEffect(() => {
     setInLocalStorage('checkupIntervalMin', checkupIntervalMin);
   }, [checkupIntervalMin]);
+  
+  useEffect(() => {
+    setInLocalStorage('organization', organization);
+  }, [organization]);
 
 
   useEffect(() => {
@@ -157,7 +173,6 @@ export default function DashboardPage() {
     { id: "tracker", title: "Tracker", icon: <Moon className="w-5 h-5" /> },
     { id: "reports", title: "Reports", icon: <LineChart className="w-5 h-5" /> },
     { id: "archive", title: "Archive", icon: <Archive className="w-5 h-5" /> },
-    { id: "organization", title: "Organization", icon: <Building className="w-5 h-5" /> },
     { id: "settings", title: "Settings", icon: <Settings className="w-5 h-5" /> }
   ];
 
@@ -288,6 +303,17 @@ export default function DashboardPage() {
     toast({ title: "Person Removed", description: `${personName || 'Person'} has been removed.`, variant: 'destructive' });
   };
 
+  const handleCreateOrganization = (orgName: string) => {
+      const newOrg: Organization = {
+          id: `org_${nanoid()}`,
+          name: orgName.trim(),
+          ownerId: 'user_current', // Should be current user's ID
+          members: [],
+      };
+      setOrganization(newOrg);
+      toast({ title: 'Success', description: 'Organization created successfully!' });
+  };
+
 
   const renderActiveTab = () => {
     const checkupIntervalMs = checkupIntervalMin * 60 * 1000;
@@ -307,8 +333,6 @@ export default function DashboardPage() {
         return <ArchiveTab logs={logs} people={people} />;
       case "reports":
         return <ReportsTab logs={logs} people={people} />;
-      case "organization":
-        return <OrganizationTab />;
       case "settings":
         return (
           <SettingsTab
@@ -320,6 +344,8 @@ export default function DashboardPage() {
             onToggleNotifications={requestNotificationPermission}
             checkupIntervalMin={checkupIntervalMin}
             onSetCheckupInterval={handleSetCheckupInterval}
+            organization={organization}
+            onCreateOrganization={handleCreateOrganization}
             onLogout={handleLogout}
           />
         );

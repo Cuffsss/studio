@@ -2,17 +2,18 @@
 "use client";
 
 import { useState } from 'react';
-import { Bell, User, Trash2, Sun, Moon, Laptop, Clock, Edit, LogOut } from "lucide-react";
+import { Bell, User, Trash2, Sun, Moon, Laptop, Clock, Edit, LogOut, Building, Link as LinkIcon, Copy, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import AddPersonDialog from './add-user-dialog';
 import EditPersonDialog from './edit-person-dialog';
-import type { Person } from "@/lib/types";
+import type { Person, Organization } from "@/lib/types";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useTheme } from "next-themes";
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { useToast } from '@/hooks/use-toast';
 
 interface SettingsTabProps {
   people: Person[];
@@ -23,6 +24,8 @@ interface SettingsTabProps {
   onToggleNotifications: () => void;
   checkupIntervalMin: number;
   onSetCheckupInterval: (minutes: number) => void;
+  organization: Organization | null;
+  onCreateOrganization: (name: string) => void;
   onLogout: () => void;
 }
 
@@ -35,10 +38,15 @@ export default function SettingsTab({
   onToggleNotifications,
   checkupIntervalMin,
   onSetCheckupInterval,
+  organization,
+  onCreateOrganization,
   onLogout,
 }: SettingsTabProps) {
   const { setTheme } = useTheme();
   const [interval, setInterval] = useState(checkupIntervalMin.toString());
+  const [newOrgName, setNewOrgName] = useState('');
+  const [orgLoading, setOrgLoading] = useState(false);
+  const { toast } = useToast();
 
   const handleIntervalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInterval(e.target.value);
@@ -49,14 +57,37 @@ export default function SettingsTab({
     if (!isNaN(newInterval) && newInterval > 0) {
       onSetCheckupInterval(newInterval);
     } else {
-      // Reset to original value if input is invalid
       setInterval(checkupIntervalMin.toString());
+    }
+  };
+  
+  const handleCreateOrganization = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newOrgName.trim()) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Organization name cannot be empty.' });
+        return;
+    }
+    setOrgLoading(true);
+    // Simulate API call
+    setTimeout(() => {
+        onCreateOrganization(newOrgName);
+        setNewOrgName('');
+        setOrgLoading(false);
+    }, 1000);
+  };
+
+  const inviteLink = organization ? `${window.location.origin}/signup/${organization.id}` : '';
+
+  const copyInviteLink = () => {
+    if (typeof window !== 'undefined') {
+      navigator.clipboard.writeText(inviteLink);
+      toast({ title: 'Copied!', description: 'Invite link copied to clipboard.'});
     }
   };
 
 
   return (
-    <div className="p-4 pb-24 space-y-4">
+    <div className="p-4 pb-24 space-y-6">
       <div className="text-center mb-6">
         <h1 className="text-2xl font-bold text-foreground">Settings</h1>
         <p className="text-muted-foreground">Manage your sleep tracking preferences</p>
@@ -71,48 +102,70 @@ export default function SettingsTab({
             <Button variant="outline" onClick={() => setTheme("system")}><Laptop className="mr-2 h-4 w-4" /> System</Button>
         </div>
       </Card>
-
+      
       <Card className="p-4 bg-card border-border shadow-md">
         <h3 className="font-semibold mb-4 flex items-center gap-2 text-foreground">
-          <Bell className="w-5 h-5 text-blue-400" />
-          Notifications
+          <Building className="w-5 h-5 text-primary" />
+          Organization
         </h3>
-        <div className="flex items-center justify-between">
+        {!organization ? (
           <div>
-            <p className="font-medium text-foreground">Push Notifications</p>
-            <p className="text-sm text-muted-foreground">
-              Get notified when checkups are due
-            </p>
+            <CardDescription className="mb-4">
+              Create an organization to invite your team and share sleep tracking data.
+            </CardDescription>
+            <form onSubmit={handleCreateOrganization} className="space-y-4">
+              <div className="space-y-2">
+                  <Label htmlFor="orgName">Organization Name</Label>
+                  <Input
+                      id="orgName"
+                      placeholder="e.g., Happy Kids Daycare"
+                      value={newOrgName}
+                      onChange={(e) => setNewOrgName(e.target.value)}
+                      disabled={orgLoading}
+                  />
+              </div>
+              <Button type="submit" disabled={orgLoading} className="w-full">
+                  {orgLoading ? 'Creating...' : 'Create Organization'}
+              </Button>
+            </form>
           </div>
-          <Switch
-            checked={notificationsEnabled}
-            onCheckedChange={onToggleNotifications}
-            className="data-[state=checked]:bg-blue-500 data-[state=unchecked]:bg-input"
-          />
-        </div>
-      </Card>
-
-      <Card className="p-4 bg-card border-border shadow-md">
-        <h3 className="font-semibold mb-4 text-foreground">App Settings</h3>
-        <div className="space-y-2">
-            <Label htmlFor="checkup-interval" className="text-foreground flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              Check-up Interval (minutes)
-            </Label>
-             <div className="flex items-center gap-2">
-              <Input
-                id="checkup-interval"
-                type="number"
-                value={interval}
-                onChange={handleIntervalChange}
-                onBlur={handleIntervalSave}
-                min="1"
-                className="bg-input border-border text-foreground"
-              />
-              <Button onClick={handleIntervalSave} variant="outline">Set</Button>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <Label>Organization Name</Label>
+              <p className="font-semibold text-lg">{organization.name}</p>
+            </div>
+            <div>
+              <Label>Invite Link</Label>
+              <CardDescription className="mb-2">
+                Share this link with workers to have them join.
+              </CardDescription>
+              <div className="flex gap-2">
+                  <Input readOnly value={inviteLink} className="bg-muted" />
+                  <Button variant="outline" onClick={copyInviteLink}>
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy
+                  </Button>
+              </div>
+            </div>
+             <div>
+              <Label>Members ({organization.members.length})</Label>
+               <div className="space-y-2 mt-2">
+                {organization.members.map(member => (
+                  <div key={member.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border">
+                    <div>
+                      <p className="font-medium text-foreground">{member.name}</p>
+                      <p className="text-sm text-muted-foreground">{member.email}</p>
+                    </div>
+                    <p className="text-sm font-semibold capitalize text-primary">{member.role}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
+        )}
       </Card>
+
 
       <Card className="p-4 bg-card border-border shadow-md">
         <h3 className="font-semibold mb-4 flex items-center gap-2 text-foreground">
@@ -167,6 +220,44 @@ export default function SettingsTab({
         </div>
 
         <AddPersonDialog onAddPerson={onAddPerson} />
+      </Card>
+
+       <Card className="p-4 bg-card border-border shadow-md">
+        <h3 className="font-semibold mb-4 flex items-center gap-2 text-foreground">
+          <Bell className="w-5 h-5 text-blue-400" />
+          App Settings
+        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="font-medium text-foreground">Push Notifications</p>
+            <p className="text-sm text-muted-foreground">
+              Get notified when checkups are due
+            </p>
+          </div>
+          <Switch
+            checked={notificationsEnabled}
+            onCheckedChange={onToggleNotifications}
+            className="data-[state=checked]:bg-blue-500 data-[state=unchecked]:bg-input"
+          />
+        </div>
+        <div className="space-y-2">
+            <Label htmlFor="checkup-interval" className="text-foreground flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              Check-up Interval (minutes)
+            </Label>
+             <div className="flex items-center gap-2">
+              <Input
+                id="checkup-interval"
+                type="number"
+                value={interval}
+                onChange={handleIntervalChange}
+                onBlur={handleIntervalSave}
+                min="1"
+                className="bg-input border-border text-foreground"
+              />
+              <Button onClick={handleIntervalSave} variant="outline">Set</Button>
+            </div>
+          </div>
       </Card>
 
       <Button variant="outline" onClick={onLogout} className="w-full">

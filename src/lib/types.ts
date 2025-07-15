@@ -45,4 +45,4 @@ export type SleepLog = {
   notes?: string;
 }
 
-export type ActiveTab = 'tracker' | 'archive' | 'settings' | 'reports' | 'organization';
+export type ActiveTab = 'tracker' | 'archive' | 'settings' | 'reports';
