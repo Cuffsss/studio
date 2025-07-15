@@ -6,7 +6,7 @@ import { Moon, User, CheckCircle, Square, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, formatDuration } from "@/lib/utils";
 import type { Person, SleepSession } from "@/lib/types";
 import CircularProgress from './circular-progress';
 import EndSessionDialog from './end-session-dialog';
@@ -46,39 +46,45 @@ const TimeSince: React.FC<{ date: Date }> = ({ date }) => {
 
 const SessionTimer: React.FC<{ session: SleepSession, checkupIntervalMs: number }> = ({ session, checkupIntervalMs }) => {
   const [progress, setProgress] = useState(0);
-  const [timeLeft, setTimeLeft] = useState('');
+  const [timerDisplay, setTimerDisplay] = useState('');
+  const [isOverdue, setIsOverdue] = useState(false);
 
   useEffect(() => {
-    const lastCheckupTime = session.checkups.length > 0 
+    const lastEventTime = session.checkups.length > 0 
       ? new Date(session.checkups[session.checkups.length - 1]).getTime()
       : new Date(session.startTime).getTime();
 
     const updateTimer = () => {
       const now = Date.now();
-      const elapsedTime = now - lastCheckupTime;
-      const remainingTime = Math.max(0, checkupIntervalMs - elapsedTime);
+      const elapsedTime = now - lastEventTime;
       
-      const currentProgress = (elapsedTime / checkupIntervalMs) * 100;
-      setProgress(Math.min(100, currentProgress));
-
-      const minutes = Math.floor(remainingTime / 60000);
-      const seconds = Math.floor((remainingTime % 60000) / 1000);
-      setTimeLeft(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+      if (elapsedTime >= checkupIntervalMs) {
+        // Overdue state
+        if (!isOverdue) setIsOverdue(true);
+        const overdueTime = elapsedTime - checkupIntervalMs;
+        setTimerDisplay(`-${formatDuration(overdueTime).slice(3)}`); // Show mm:ss
+        setProgress(100);
+      } else {
+        // Countdown state
+        if (isOverdue) setIsOverdue(false);
+        const remainingTime = checkupIntervalMs - elapsedTime;
+        const currentProgress = (elapsedTime / checkupIntervalMs) * 100;
+        setTimerDisplay(formatDuration(remainingTime).slice(3)); // show mm:ss
+        setProgress(currentProgress);
+      }
     };
 
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [session, checkupIntervalMs]);
-
-  const needsCheckup = progress >= 100;
+  }, [session, checkupIntervalMs, isOverdue]);
 
   return (
      <div className="flex flex-col items-center gap-2">
-        <CircularProgress progress={progress} needsCheckup={needsCheckup}>
+        <CircularProgress progress={progress} isOverdue={isOverdue}>
             <div className="text-center">
-                <div className={cn("text-lg font-bold", needsCheckup ? "text-red-400" : "text-foreground")}>{timeLeft}</div>
-                <div className="text-xs text-muted-foreground">Next checkup</div>
+                <div className={cn("text-lg font-bold", isOverdue ? "text-red-400" : "text-foreground")}>{timerDisplay}</div>
+                <div className="text-xs text-muted-foreground">{isOverdue ? "Checkup Overdue" : "Next Checkup"}</div>
             </div>
         </CircularProgress>
     </div>
@@ -99,7 +105,7 @@ export default function TrackerTab({
   const getTimeSinceLastCheckup = (session: SleepSession) => {
     const lastCheckup = session.checkups.length > 0 ? session.checkups[session.checkups.length - 1] : session.startTime;
     const now = new Date();
-    return Math.floor((now.getTime() - new Date(lastCheckup).getTime()) / (1000 * 60));
+    return Math.floor((now.getTime() - new Date(lastCheckup).getTime()));
   };
   
   return (
@@ -119,8 +125,7 @@ export default function TrackerTab({
         <div className="space-y-3">
           {people.map((person) => {
             const activeSession = getActiveSession(person.id);
-            const timeSinceLastCheckup = activeSession ? getTimeSinceLastCheckup(activeSession) : 0;
-            const needsCheckup = timeSinceLastCheckup >= (checkupIntervalMs / 60000);
+            const isOverdue = activeSession ? getTimeSinceLastCheckup(activeSession) >= checkupIntervalMs : false;
 
             return (
               <Card key={person.id} className="p-4 bg-card border-border shadow-md">
@@ -135,8 +140,8 @@ export default function TrackerTab({
                     </div>
                   </div>
                   {activeSession && (
-                    <Badge variant={needsCheckup ? "destructive" : "default"} className={cn(
-                      needsCheckup ? "bg-red-500 text-white" : "bg-green-500 text-white"
+                    <Badge variant={isOverdue ? "destructive" : "default"} className={cn(
+                      isOverdue ? "bg-red-500 text-white" : "bg-green-500 text-white"
                     )}>
                       {activeSession.status === 'active' ? 'Sleeping' : 'Completed'}
                     </Badge>
@@ -157,22 +162,22 @@ export default function TrackerTab({
                         <SessionTimer session={activeSession} checkupIntervalMs={checkupIntervalMs} />
                     </div>
                     
-                    {needsCheckup && (
-                      <div className="p-2 bg-red-500/10 border border-red-500/20 rounded-md text-center">
+                    {isOverdue && (
+                      <div className="p-2 bg-red-500/10 border border-red-500/20 rounded-md text-center animate-pulse">
                         <p className="text-sm text-red-400 font-medium">
-                          ⚠️ Checkup due
+                          ⚠️ Checkup Overdue
                         </p>
                       </div>
                     )}
 
                     <div className="flex gap-2">
                       <Button
-                        variant={needsCheckup ? "default" : "outline"}
+                        variant={isOverdue ? "default" : "outline"}
                         size="sm"
                         onClick={() => onCheckup(activeSession.id)}
                         className={cn(
                           "flex-1",
-                          needsCheckup ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600" : "border-border text-foreground hover:bg-accent hover:text-accent-foreground"
+                          isOverdue ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600" : "border-border text-foreground hover:bg-accent hover:text-accent-foreground"
                         )}
                       >
                         <CheckCircle className="w-4 h-4 mr-2" />

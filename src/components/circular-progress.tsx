@@ -6,13 +6,14 @@ import { cn } from "@/lib/utils";
 interface CircularProgressProps {
     progress: number;
     children?: React.ReactNode;
-    needsCheckup?: boolean;
+    isOverdue?: boolean;
 }
 
-const CircularProgress: React.FC<CircularProgressProps> = ({ progress, children, needsCheckup = false }) => {
+const CircularProgress: React.FC<CircularProgressProps> = ({ progress, children, isOverdue = false }) => {
     const radius = 50;
     const circumference = 2 * Math.PI * radius;
-    const offset = circumference - (progress / 100) * circumference;
+    // For the countdown, the stroke fills up. For overdue, it's always full.
+    const offset = isOverdue ? 0 : circumference - (progress / 100) * circumference;
 
     return (
         <div className="relative w-32 h-32">
@@ -32,7 +33,7 @@ const CircularProgress: React.FC<CircularProgressProps> = ({ progress, children,
                 <circle
                     className={cn(
                         "transition-all duration-300",
-                        needsCheckup ? "text-red-500" : "text-primary"
+                        isOverdue ? "text-red-500 animate-pulse-slow" : "text-primary"
                     )}
                     strokeWidth="10"
                     strokeDasharray={circumference}

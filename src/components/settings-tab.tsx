@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Bell, User, Trash2, Sun, Moon, Laptop, Clock, Edit, LogOut, Building, Link as LinkIcon, Copy, UserPlus } from "lucide-react";
+import { Bell, User, Trash2, Sun, Moon, Laptop, Clock, Edit, LogOut, Building, Link as LinkIcon, Copy, UserPlus, BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -24,6 +24,8 @@ interface SettingsTabProps {
   onToggleNotifications: () => void;
   checkupIntervalMin: number;
   onSetCheckupInterval: (minutes: number) => void;
+  alarmIntervalMin: number;
+  onSetAlarmInterval: (minutes: number) => void;
   organization: Organization | null;
   onCreateOrganization: (name: string) => void;
   onLogout: () => void;
@@ -38,26 +40,29 @@ export default function SettingsTab({
   onToggleNotifications,
   checkupIntervalMin,
   onSetCheckupInterval,
+  alarmIntervalMin,
+  onSetAlarmInterval,
   organization,
   onCreateOrganization,
   onLogout,
 }: SettingsTabProps) {
   const { setTheme } = useTheme();
-  const [interval, setInterval] = useState(checkupIntervalMin.toString());
+  const [checkupInterval, setCheckupInterval] = useState(checkupIntervalMin.toString());
+  const [alarmInterval, setAlarmInterval] = useState(alarmIntervalMin.toString());
   const [newOrgName, setNewOrgName] = useState('');
   const [orgLoading, setOrgLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleIntervalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInterval(e.target.value);
+  const handleIntervalChange = (setter: React.Dispatch<React.SetStateAction<string>>) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setter(e.target.value);
   };
-
-  const handleIntervalSave = () => {
-    const newInterval = parseInt(interval);
+  
+  const handleIntervalSave = (value: string, onSave: (val: number) => void, originalValue: number, setter: React.Dispatch<React.SetStateAction<string>>) => () => {
+    const newInterval = parseInt(value);
     if (!isNaN(newInterval) && newInterval > 0) {
-      onSetCheckupInterval(newInterval);
+      onSave(newInterval);
     } else {
-      setInterval(checkupIntervalMin.toString());
+      setter(originalValue.toString());
     }
   };
   
@@ -240,22 +245,43 @@ export default function SettingsTab({
             className="data-[state=checked]:bg-blue-500 data-[state=unchecked]:bg-input"
           />
         </div>
-        <div className="space-y-2">
-            <Label htmlFor="checkup-interval" className="text-foreground flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              Check-up Interval (minutes)
-            </Label>
-             <div className="flex items-center gap-2">
-              <Input
-                id="checkup-interval"
-                type="number"
-                value={interval}
-                onChange={handleIntervalChange}
-                onBlur={handleIntervalSave}
-                min="1"
-                className="bg-input border-border text-foreground"
-              />
-              <Button onClick={handleIntervalSave} variant="outline">Set</Button>
+        <div className="space-y-4">
+            <div className='space-y-2'>
+                <Label htmlFor="checkup-interval" className="text-foreground flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    Check-up Timer (minutes)
+                </Label>
+                <div className="flex items-center gap-2">
+                    <Input
+                    id="checkup-interval"
+                    type="number"
+                    value={checkupInterval}
+                    onChange={handleIntervalChange(setCheckupInterval)}
+                    onBlur={handleIntervalSave(checkupInterval, onSetCheckupInterval, checkupIntervalMin, setCheckupInterval)}
+                    min="1"
+                    className="bg-input border-border text-foreground"
+                    />
+                    <Button onClick={handleIntervalSave(checkupInterval, onSetCheckupInterval, checkupIntervalMin, setCheckupInterval)} variant="outline">Set</Button>
+                </div>
+            </div>
+            <div className='space-y-2'>
+                <Label htmlFor="alarm-interval" className="text-foreground flex items-center gap-2">
+                    <BellRing className="w-4 h-4" />
+                    Alarm Sound Interval (minutes)
+                </Label>
+                 <CardDescription>How often the alarm sounds when a check-up is overdue.</CardDescription>
+                <div className="flex items-center gap-2">
+                    <Input
+                    id="alarm-interval"
+                    type="number"
+                    value={alarmInterval}
+                    onChange={handleIntervalChange(setAlarmInterval)}
+                    onBlur={handleIntervalSave(alarmInterval, onSetAlarmInterval, alarmIntervalMin, setAlarmInterval)}
+                    min="1"
+                    className="bg-input border-border text-foreground"
+                    />
+                    <Button onClick={handleIntervalSave(alarmInterval, onSetAlarmInterval, alarmIntervalMin, setAlarmInterval)} variant="outline">Set</Button>
+                </div>
             </div>
           </div>
       </Card>

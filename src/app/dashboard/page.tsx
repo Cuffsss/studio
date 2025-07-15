@@ -17,6 +17,8 @@ import ReportsTab from '@/components/reports-tab';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const DEFAULT_CHECKUP_INTERVAL_MIN = 10;
+const DEFAULT_ALARM_INTERVAL_MIN = 2;
+
 
 const MOCK_USERS: User[] = [
     { id: 'user_1', name: 'Alice (Admin)', email: 'alice@example.com', role: 'admin', organizationId: 'org_123_abc'},
@@ -65,6 +67,8 @@ export default function DashboardPage() {
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [checkupIntervalMin, setCheckupIntervalMin] = useState(DEFAULT_CHECKUP_INTERVAL_MIN);
+  const [alarmIntervalMin, setAlarmIntervalMin] = useState(DEFAULT_ALARM_INTERVAL_MIN);
+
   const { toast } = useToast();
   
   const router = useRouter();
@@ -77,6 +81,7 @@ export default function DashboardPage() {
     setActiveSessions(getFromLocalStorage('activeSessions', []));
     setLogs(getFromLocalStorage('logs', []));
     setCheckupIntervalMin(getFromLocalStorage('checkupIntervalMin', DEFAULT_CHECKUP_INTERVAL_MIN));
+    setAlarmIntervalMin(getFromLocalStorage('alarmIntervalMin', DEFAULT_ALARM_INTERVAL_MIN));
     setOrganization(getFromLocalStorage('organization', {
       id: 'org_123_abc',
       name: 'Happy Kids Daycare',
@@ -109,6 +114,10 @@ export default function DashboardPage() {
   }, [checkupIntervalMin]);
   
   useEffect(() => {
+    setInLocalStorage('alarmIntervalMin', alarmIntervalMin);
+  }, [alarmIntervalMin]);
+
+  useEffect(() => {
     setInLocalStorage('organization', organization);
   }, [organization]);
 
@@ -126,6 +135,11 @@ export default function DashboardPage() {
   const handleSetCheckupInterval = (minutes: number) => {
     setCheckupIntervalMin(minutes);
     toast({ title: "Settings Updated", description: `Check-up interval set to ${minutes} minutes.` });
+  };
+  
+  const handleSetAlarmInterval = (minutes: number) => {
+    setAlarmIntervalMin(minutes);
+    toast({ title: "Settings Updated", description: `Alarm interval set to ${minutes} minutes.` });
   };
 
   const requestNotificationPermission = async () => {
@@ -193,30 +207,36 @@ export default function DashboardPage() {
     setLogs(prev => [newLog, ...prev]);
   };
 
-  const scheduleNotification = (personName: string, sessionId: string) => {
-    const checkupIntervalMs = checkupIntervalMin * 60 * 1000;
+  const scheduleNotification = (personName: string, sessionId: string, isFirstCheckup: boolean) => {
+    const intervalMs = isFirstCheckup ? checkupIntervalMin * 60 * 1000 : alarmIntervalMin * 60 * 1000;
+  
     return setTimeout(() => {
-      // We need to use a functional update for activeSessions to get the latest state inside the timeout
+      // Use a functional update to get the latest state inside the timeout
       setActiveSessions(currentActiveSessions => {
         const sessionStillActive = currentActiveSessions.some(s => s.id === sessionId && s.status === 'active');
         
         if (notificationsEnabled && sessionStillActive) {
-          new Notification('Check-up Due!', {
+          const notificationTitle = isFirstCheckup ? 'Check-up Due!' : 'Checkup Overdue!';
+          new Notification(notificationTitle, {
             body: `It's time to check on ${personName}.`,
             icon: '/logo.png',
             tag: sessionId, // Use session ID as tag to prevent duplicate notifications
+            renotify: true, // Allow re-notification for overdue alerts
           });
           
-          // Play notification sound
           const audio = new Audio('https://www.soundjay.com/buttons/sounds/beep-07a.mp3');
-          audio.play().catch(error => {
-            console.error("Failed to play notification sound:", error);
-            // This error often happens if the user hasn't interacted with the page first.
-          });
+          audio.play().catch(console.error);
+
+          // Schedule the next overdue alarm
+          const newTimerId = scheduleNotification(personName, sessionId, false);
+          
+          return currentActiveSessions.map(s => 
+            s.id === sessionId ? { ...s, notificationTimerId: newTimerId } : s
+          );
         }
         return currentActiveSessions;
       });
-    }, checkupIntervalMs);
+    }, intervalMs);
   };
   
 
@@ -225,7 +245,7 @@ export default function DashboardPage() {
     const person = people.find(p => p.id === personId);
     if (!person) return;
 
-    const notificationTimerId = scheduleNotification(person.name, sessionId);
+    const notificationTimerId = scheduleNotification(person.name, sessionId, true);
 
     const newSession: SleepSession = {
       id: sessionId,
@@ -246,10 +266,12 @@ export default function DashboardPage() {
     setActiveSessions(prev =>
       prev.map(s => {
         if (s.id === sessionId) {
+          // Clear any existing timers (both checkup and alarm)
           if (s.notificationTimerId) {
             clearTimeout(s.notificationTimerId);
           }
-          const newNotificationTimerId = scheduleNotification(s.personName, sessionId);
+          // Schedule the *next* checkup
+          const newNotificationTimerId = scheduleNotification(s.personName, sessionId, true);
           return {
             ...s,
             checkups: [...s.checkups, new Date()],
@@ -344,6 +366,8 @@ export default function DashboardPage() {
             onToggleNotifications={requestNotificationPermission}
             checkupIntervalMin={checkupIntervalMin}
             onSetCheckupInterval={handleSetCheckupInterval}
+            alarmIntervalMin={alarmIntervalMin}
+            onSetAlarmInterval={handleSetAlarmInterval}
             organization={organization}
             onCreateOrganization={handleCreateOrganization}
             onLogout={handleLogout}
