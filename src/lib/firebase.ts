@@ -1,6 +1,7 @@
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, onIdTokenChanged } from "firebase/auth";
+import Cookies from 'js-cookie';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -17,18 +18,19 @@ if (Object.values(firebaseConfig).every(value => value)) {
   firebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 } else {
     console.error("Firebase config is missing. Please set up your environment variables.");
+    // Provide a dummy app object to prevent crashes, but functionality will be limited.
     firebaseApp = {} as FirebaseApp;
 }
 
 // Set auth token in a cookie
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && firebaseApp.options) {
     const auth = getAuth(firebaseApp);
     onIdTokenChanged(auth, async (user) => {
         if (user) {
             const token = await user.getIdToken();
-            document.cookie = `firebaseIdToken=${token}; path=/; max-age=31536000`; // 1 year expiry
+            Cookies.set('firebaseIdToken', token, { expires: 365, path: '/' });
         } else {
-            document.cookie = 'firebaseIdToken=; path=/; max-age=0';
+            Cookies.remove('firebaseIdToken', { path: '/' });
         }
     });
 }
