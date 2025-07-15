@@ -12,27 +12,34 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+// Initialize Firebase App
 let firebaseApp: FirebaseApp;
+const areAllConfigValuesPresent = Object.values(firebaseConfig).every(value => Boolean(value));
 
-if (Object.values(firebaseConfig).every(value => value)) {
+if (areAllConfigValuesPresent) {
   firebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 } else {
-    console.error("Firebase config is missing. Please set up your environment variables.");
-    // Provide a dummy app object to prevent crashes, but functionality will be limited.
-    firebaseApp = {} as FirebaseApp;
+  // In a real app, you might want to log this for debugging, 
+  // but we'll keep it quiet to avoid console errors during setup.
+  firebaseApp = {} as FirebaseApp; // Provide a dummy app to prevent crashes
 }
 
-// Set auth token in a cookie
+
+// Set auth token in a cookie on the client side
 if (typeof window !== 'undefined' && firebaseApp.options) {
-    const auth = getAuth(firebaseApp);
-    onIdTokenChanged(auth, async (user) => {
-        if (user) {
-            const token = await user.getIdToken();
-            Cookies.set('firebaseIdToken', token, { expires: 365, path: '/' });
-        } else {
-            Cookies.remove('firebaseIdToken', { path: '/' });
-        }
-    });
+    try {
+        const auth = getAuth(firebaseApp);
+        onIdTokenChanged(auth, async (user) => {
+            if (user) {
+                const token = await user.getIdToken();
+                Cookies.set('firebaseIdToken', token, { expires: 365, path: '/' });
+            } else {
+                Cookies.remove('firebaseIdToken', { path: '/' });
+            }
+        });
+    } catch (error) {
+        console.error("Error setting up Firebase auth state change listener:", error);
+    }
 }
 
 export { firebaseApp };
