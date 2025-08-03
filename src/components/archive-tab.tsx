@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useState } from "react";
-import { Play, CheckCircle, Square, Clock, Copy, Archive, FileText } from "lucide-react";
+import { useState, useRef } from "react";
+import { Play, CheckCircle, Square, Clock, Copy, Archive, FileText, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import type { SleepLog, Person } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 interface ArchiveTabProps {
   logs: SleepLog[];
@@ -19,7 +21,10 @@ interface ArchiveTabProps {
 export default function ArchiveTab({ logs, people }: ArchiveTabProps) {
   const [filterDate, setFilterDate] = useState("");
   const [selectedPerson, setSelectedPerson] = useState<string>("all");
+  const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
+  const logsContainerRef = useRef<HTMLDivElement>(null);
+
 
   const filteredLogs = logs.filter(log => {
     const matchesName = selectedPerson === "all" || log.personId === selectedPerson;
@@ -37,6 +42,52 @@ export default function ArchiveTab({ logs, people }: ArchiveTabProps) {
       toast({ title: "Copied!", description: "Logs copied to clipboard."});
     }
   };
+
+  const exportToPdf = async () => {
+    if (!logsContainerRef.current || filteredLogs.length === 0) {
+        toast({
+            variant: "destructive",
+            title: "Export Failed",
+            description: "No logs to export."
+        });
+        return;
+    }
+    
+    setIsExporting(true);
+    toast({ title: "Exporting...", description: "Generating PDF, please wait." });
+
+    try {
+        const canvas = await html2canvas(logsContainerRef.current, { 
+            scale: 2,
+            useCORS: true,
+            backgroundColor: null // Use element's background
+        });
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF({
+            orientation: 'p',
+            unit: 'px',
+            format: [canvas.width, canvas.height]
+        });
+
+        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+
+        const personFilter = selectedPerson === "all" ? "all-people" : people.find(p => p.id === selectedPerson)?.name || 'person';
+        const dateFilter = filterDate || 'all-dates';
+        pdf.save(`sleep-logs-${personFilter.replace(' ', '_')}-${dateFilter}.pdf`);
+
+        toast({ title: "Export Successful", description: "Your PDF has been downloaded." });
+
+    } catch (error) {
+        console.error("PDF Export Error:", error);
+        toast({
+            variant: "destructive",
+            title: "Export Failed",
+            description: "An error occurred while generating the PDF."
+        });
+    } finally {
+        setIsExporting(false);
+    }
+};
 
   const getActionIcon = (action: string) => {
     switch (action) {
@@ -56,7 +107,7 @@ export default function ArchiveTab({ logs, people }: ArchiveTabProps) {
 
       <Card className="p-4 bg-card border-border shadow-md">
         <div className="space-y-4">
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Select value={selectedPerson} onValueChange={setSelectedPerson}>
               <SelectTrigger className="flex-1 bg-input border-border text-foreground">
                 <SelectValue placeholder="Filter by person" />
@@ -78,14 +129,20 @@ export default function ArchiveTab({ logs, people }: ArchiveTabProps) {
             />
           </div>
           
-          <Button onClick={copyToClipboard} variant="outline" className="w-full border-border text-foreground hover:bg-accent hover:text-accent-foreground">
-            <Copy className="w-4 h-4 mr-2" />
-            Copy Logs to Clipboard ({filteredLogs.length} entries)
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button onClick={copyToClipboard} variant="outline" className="w-full border-border text-foreground hover:bg-accent hover:text-accent-foreground">
+              <Copy className="w-4 h-4 mr-2" />
+              Copy Logs ({filteredLogs.length})
+            </Button>
+             <Button onClick={exportToPdf} disabled={isExporting} className="w-full">
+              <Download className="w-4 h-4 mr-2" />
+              {isExporting ? 'Exporting...' : 'Export to PDF'}
+            </Button>
+          </div>
         </div>
       </Card>
 
-      <div className="space-y-2">
+      <div ref={logsContainerRef} className="space-y-2 bg-background p-2 rounded-lg">
         {filteredLogs.length === 0 ? (
           <Card className="p-8 text-center bg-card border-border">
             <Archive className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />

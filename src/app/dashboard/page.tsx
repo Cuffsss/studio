@@ -2,20 +2,16 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useRouter } from "next/navigation";
 import { Moon, Archive, Settings, LogOut, LineChart } from "lucide-react";
 import type { Person, SleepSession, SleepLog, ActiveTab, Organization, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { nanoid } from 'nanoid';
-import { getAuth, onAuthStateChanged, signOut, getIdToken } from "firebase/auth";
-import { firebaseApp } from '@/lib/firebase';
 
 import AnimatedTabs from '@/components/animated-tabs';
 import TrackerTab from '@/components/tracker-tab';
 import ArchiveTab from '@/components/archive-tab';
 import SettingsTab from '@/components/settings-tab';
 import ReportsTab from '@/components/reports-tab';
-import { Skeleton } from '@/components/ui/skeleton';
 
 const DEFAULT_CHECKUP_INTERVAL_MIN = 10;
 const DEFAULT_ALARM_INTERVAL_MIN = 2;
@@ -42,53 +38,18 @@ export default function DashboardPage() {
 
   const { toast } = useToast();
   
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  // Auth state listener
+  // Mock current user
   useEffect(() => {
-    if (!firebaseApp.options?.apiKey) {
-      toast({
-          variant: "destructive",
-          title: "Configuration Error",
-          description: "Firebase is not configured. Please add environment variables.",
-      });
-      setLoading(false); // Stop loading, but don't redirect
-      return;
-    }
-
-    const auth = getAuth(firebaseApp);
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        // Verify token with backend
-        const token = await user.getIdToken();
-        const response = await fetch('/api/auth/verify', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (response.ok) {
-            const userData = await response.json();
-             setCurrentUser({
-                id: userData.uid,
-                email: userData.email || 'No email',
-                name: userData.name || 'Anonymous',
-                role: 'admin', // default role for now
-                organizationId: '', // would be fetched
-            });
-            setLoading(false);
-        } else {
-            // Token verification failed, log out
-            await signOut(auth);
-            router.push('/login');
-        }
-      } else {
-        router.push('/login');
-      }
+    setCurrentUser({
+      id: 'local-user',
+      email: 'user@example.com',
+      name: 'Local User',
+      role: 'admin',
+      organizationId: '',
     });
-    return () => unsubscribe();
-  }, [router, toast]);
+  }, []);
 
 
   // Check notification permission
@@ -144,17 +105,7 @@ export default function DashboardPage() {
 
 
   const handleLogout = async () => {
-    if (!firebaseApp.options?.apiKey) {
-      router.push('/login');
-      return;
-    }
-    const auth = getAuth(firebaseApp);
-    try {
-      await signOut(auth);
-      // The onAuthStateChanged listener will handle the redirect
-    } catch (error) {
-       toast({ variant: 'destructive', title: "Logout Failed", description: "An error occurred while logging out." });
-    }
+    toast({ title: "Logout Clicked", description: "In a real app, this would log the user out." });
   };
 
   const tabs = [
@@ -371,17 +322,6 @@ export default function DashboardPage() {
         return null;
     }
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-              <Moon className="w-12 h-12 mx-auto mb-4 text-primary animate-pulse" />
-              <p className="text-muted-foreground">Verifying Session...</p>
-          </div>
-      </div>
-    );
-  }
   
   return (
     <>
