@@ -40,11 +40,15 @@ export default function DashboardPage() {
 
   const { toast } = useToast();
   const router = useRouter();
-  const auth = getAuth(firebaseApp);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   // Auth state listener
   useEffect(() => {
+    if (!firebaseApp.options?.apiKey) {
+      // Firebase not configured, no need to listen for auth state
+      return;
+    }
+    const auth = getAuth(firebaseApp);
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setCurrentUser(user);
@@ -63,7 +67,7 @@ export default function DashboardPage() {
     });
 
     return () => unsubscribe();
-  }, [auth, router]);
+  }, [router]);
 
 
   // Check notification permission
@@ -118,7 +122,9 @@ export default function DashboardPage() {
   };
 
   const handleLogout = async () => {
+    if (!firebaseApp.options?.apiKey) return;
     try {
+        const auth = getAuth(firebaseApp);
         await signOut(auth);
         toast({ title: "Logged Out", description: "You have been successfully logged out." });
     } catch (error) {

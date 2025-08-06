@@ -40,6 +40,15 @@ export default function SignupPage() {
 
   const handleSignup = async (values: z.infer<typeof formSchema>) => {
     setLoading(true);
+    if (!firebaseApp.options?.apiKey) {
+      toast({
+        variant: 'destructive',
+        title: 'Firebase Not Configured',
+        description: 'Please add your Firebase credentials to the environment variables to use authentication.',
+      });
+      setLoading(false);
+      return;
+    }
     try {
       const auth = getAuth(firebaseApp);
       await createUserWithEmailAndPassword(auth, values.email, values.password);

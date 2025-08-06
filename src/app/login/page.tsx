@@ -39,6 +39,15 @@ export default function LoginPage() {
 
   const handleLogin = async (values: z.infer<typeof formSchema>) => {
     setLoading(true);
+    if (!firebaseApp.options?.apiKey) {
+      toast({
+        variant: 'destructive',
+        title: 'Firebase Not Configured',
+        description: 'Please add your Firebase credentials to the environment variables to use authentication.',
+      });
+      setLoading(false);
+      return;
+    }
     try {
       const auth = getAuth(firebaseApp);
       await signInWithEmailAndPassword(auth, values.email, values.password);
