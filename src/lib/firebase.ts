@@ -1,6 +1,4 @@
 
-// This file is not strictly necessary now that auth is disabled,
-// but we'll keep it for potential future use.
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 
 const firebaseConfig = {
@@ -13,13 +11,17 @@ const firebaseConfig = {
 };
 
 let firebaseApp: FirebaseApp;
-const areAllConfigValuesPresent = Object.values(firebaseConfig).every(value => Boolean(value));
+
+// Check that all required configuration values are present
+const areAllConfigValuesPresent = Object.values(firebaseConfig).every(Boolean);
 
 if (areAllConfigValuesPresent) {
   firebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 } else {
+  console.info("Firebase config is incomplete. Firebase features will be disabled.");
   // Provide a dummy app to prevent crashes if config is not set
   firebaseApp = {} as FirebaseApp;
 }
+
 
 export { firebaseApp };

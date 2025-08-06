@@ -2,18 +2,18 @@
 "use client";
 
 import { useState } from 'react';
-import { Bell, User, Trash2, Sun, Moon, Laptop, Clock, Edit, LogOut, Building, Copy, BellRing } from "lucide-react";
+import type { User } from 'firebase/auth';
+import { Bell, User as UserIcon, Trash2, Sun, Moon, Laptop, Clock, Edit, LogOut, BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import AddPersonDialog from './add-user-dialog';
 import EditPersonDialog from './edit-person-dialog';
-import type { Person, Organization, User } from "@/lib/types";
+import type { Person } from "@/lib/types";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useTheme } from "next-themes";
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { useToast } from '@/hooks/use-toast';
 
 interface SettingsTabProps {
   people: Person[];
@@ -26,8 +26,6 @@ interface SettingsTabProps {
   onSetCheckupInterval: (minutes: number) => void;
   alarmIntervalMin: number;
   onSetAlarmInterval: (minutes: number) => void;
-  organization: Organization | null;
-  onCreateOrganization: (name: string) => void;
   onLogout: () => void;
   currentUser: User | null;
 }
@@ -43,17 +41,12 @@ export default function SettingsTab({
   onSetCheckupInterval,
   alarmIntervalMin,
   onSetAlarmInterval,
-  organization,
-  onCreateOrganization,
   onLogout,
   currentUser,
 }: SettingsTabProps) {
   const { setTheme } = useTheme();
   const [checkupInterval, setCheckupInterval] = useState(checkupIntervalMin.toString());
   const [alarmInterval, setAlarmInterval] = useState(alarmIntervalMin.toString());
-  const [newOrgName, setNewOrgName] = useState('');
-  const [orgLoading, setOrgLoading] = useState(false);
-  const { toast } = useToast();
 
   const handleIntervalChange = (setter: React.Dispatch<React.SetStateAction<string>>) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setter(e.target.value);
@@ -67,37 +60,12 @@ export default function SettingsTab({
       setter(originalValue.toString());
     }
   };
-  
-  const handleCreateOrganization = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newOrgName.trim()) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Organization name cannot be empty.' });
-        return;
-    }
-    setOrgLoading(true);
-    // In a real app, this would be an API call
-    setTimeout(() => {
-        onCreateOrganization(newOrgName);
-        setNewOrgName('');
-        setOrgLoading(false);
-    }, 1000);
-  };
-
-  const inviteLink = (typeof window !== 'undefined' && organization) ? `${window.location.origin}/signup?invite=${organization.id}` : '';
-
-  const copyInviteLink = () => {
-    if (typeof window !== 'undefined') {
-      navigator.clipboard.writeText(inviteLink);
-      toast({ title: 'Copied!', description: 'Invite link copied to clipboard.'});
-    }
-  };
-
 
   return (
     <div className="p-4 pb-24 space-y-6">
       <div className="text-center mb-6">
         <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-        <p className="text-muted-foreground">Manage your account, organization, and app preferences</p>
+        <p className="text-muted-foreground">Manage your account and app preferences</p>
       </div>
 
        <Card className="p-4 bg-card border-border shadow-md">
@@ -120,71 +88,7 @@ export default function SettingsTab({
       
       <Card className="p-4 bg-card border-border shadow-md">
         <h3 className="font-semibold mb-4 flex items-center gap-2 text-foreground">
-          <Building className="w-5 h-5 text-primary" />
-          Organization
-        </h3>
-        {!organization ? (
-          <div>
-            <CardDescription className="mb-4">
-              Create an organization to invite your team and share sleep tracking data.
-            </CardDescription>
-            <form onSubmit={handleCreateOrganization} className="space-y-4">
-              <div className="space-y-2">
-                  <Label htmlFor="orgName">Organization Name</Label>
-                  <Input
-                      id="orgName"
-                      placeholder="e.g., Happy Kids Daycare"
-                      value={newOrgName}
-                      onChange={(e) => setNewOrgName(e.target.value)}
-                      disabled={orgLoading}
-                  />
-              </div>
-              <Button type="submit" disabled={orgLoading} className="w-full">
-                  {orgLoading ? 'Creating...' : 'Create Organization'}
-              </Button>
-            </form>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div>
-              <Label>Organization Name</Label>
-              <p className="font-semibold text-lg">{organization.name}</p>
-            </div>
-            <div>
-              <Label>Invite Link</Label>
-              <CardDescription className="mb-2">
-                Share this link with workers to have them join.
-              </CardDescription>
-              <div className="flex gap-2">
-                  <Input readOnly value={inviteLink} className="bg-muted" />
-                  <Button variant="outline" onClick={copyInviteLink}>
-                    <Copy className="w-4 h-4 mr-2" />
-                    Copy
-                  </Button>
-              </div>
-            </div>
-             <div>
-              <Label>Members ({organization.members.length})</Label>
-               <div className="space-y-2 mt-2">
-                {organization.members.map(member => (
-                  <div key={member.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border">
-                    <div>
-                      <p className="font-medium text-foreground">{member.name}</p>
-                      <p className="text-sm text-muted-foreground">{member.email}</p>
-                    </div>
-                    <p className="text-sm font-semibold capitalize text-primary">{member.role}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </Card>
-
-
-      <Card className="p-4 bg-card border-border shadow-md">
-        <h3 className="font-semibold mb-4 flex items-center gap-2 text-foreground">
-          <User className="w-5 h-5 text-purple-400" />
+          <UserIcon className="w-5 h-5 text-purple-400" />
           People in Your Care
         </h3>
         

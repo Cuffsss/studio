@@ -2,11 +2,15 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { getAuth, onAuthStateChanged, signOut, type User } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 import { Moon, Archive, Settings, LogOut, LineChart } from "lucide-react";
-import type { Person, SleepSession, SleepLog, ActiveTab, Organization, User } from '@/lib/types';
+import type { Person, SleepSession, SleepLog, ActiveTab } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { nanoid } from 'nanoid';
+import Cookies from 'js-cookie';
 
+import { firebaseApp } from '@/lib/firebase';
 import AnimatedTabs from '@/components/animated-tabs';
 import TrackerTab from '@/components/tracker-tab';
 import ArchiveTab from '@/components/archive-tab';
@@ -21,7 +25,6 @@ const DEFAULT_ALARM_INTERVAL_MIN = 2;
 
 const getInitialPeople = (): Person[] => [];
 const getInitialLogs = (): SleepLog[] => [];
-const getInitialOrganization = (): Organization | null => null;
 
 
 export default function DashboardPage() {
@@ -30,26 +33,37 @@ export default function DashboardPage() {
   const [people, setPeople] = useState<Person[]>(getInitialPeople());
   const [activeSessions, setActiveSessions] = useState<SleepSession[]>([]);
   const [logs, setLogs] = useState<SleepLog[]>(getInitialLogs());
-  const [organization, setOrganization] = useState<Organization | null>(getInitialOrganization());
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [checkupIntervalMin, setCheckupIntervalMin] = useState(DEFAULT_CHECKUP_INTERVAL_MIN);
   const [alarmIntervalMin, setAlarmIntervalMin] = useState(DEFAULT_ALARM_INTERVAL_MIN);
 
   const { toast } = useToast();
-  
+  const router = useRouter();
+  const auth = getAuth(firebaseApp);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  // Mock current user
+  // Auth state listener
   useEffect(() => {
-    setCurrentUser({
-      id: 'local-user',
-      email: 'user@example.com',
-      name: 'Local User',
-      role: 'admin',
-      organizationId: '',
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setCurrentUser(user);
+        const idToken = await user.getIdToken();
+        // Send token to server to create session cookie
+        await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${idToken}` }
+        });
+      } else {
+        setCurrentUser(null);
+        // Remove cookie and redirect
+        Cookies.remove('session');
+        router.push('/login');
+      }
     });
-  }, []);
+
+    return () => unsubscribe();
+  }, [auth, router]);
 
 
   // Check notification permission
@@ -103,9 +117,13 @@ export default function DashboardPage() {
     }
   };
 
-
   const handleLogout = async () => {
-    toast({ title: "Logout Clicked", description: "In a real app, this would log the user out." });
+    try {
+        await signOut(auth);
+        toast({ title: "Logged Out", description: "You have been successfully logged out." });
+    } catch (error) {
+        toast({ variant: 'destructive', title: "Logout Failed", description: "An error occurred while logging out." });
+    }
   };
 
   const tabs = [
@@ -269,18 +287,6 @@ export default function DashboardPage() {
     toast({ title: "Person Removed", description: `${personName || 'Person'} has been removed.`, variant: 'destructive' });
   };
 
-  const handleCreateOrganization = (orgName: string) => {
-      const newOrg: Organization = {
-          id: `org_${nanoid()}`,
-          name: orgName.trim(),
-          ownerId: currentUser?.id || 'unknown',
-          members: currentUser ? [currentUser] : [],
-      };
-      setOrganization(newOrg);
-      toast({ title: 'Success', description: 'Organization created successfully!' });
-  };
-
-
   const renderActiveTab = () => {
     const checkupIntervalMs = checkupIntervalMin * 60 * 1000;
     switch (activeTab) {
@@ -312,8 +318,6 @@ export default function DashboardPage() {
             onSetCheckupInterval={handleSetCheckupInterval}
             alarmIntervalMin={alarmIntervalMin}
             onSetAlarmInterval={handleSetAlarmInterval}
-            organization={organization}
-            onCreateOrganization={handleCreateOrganization}
             onLogout={handleLogout}
             currentUser={currentUser}
           />
