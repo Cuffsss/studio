@@ -83,7 +83,7 @@ const SessionTimer: React.FC<{ session: SleepSession, checkupIntervalMs: number 
      <div className="flex flex-col items-center gap-2">
         <CircularProgress progress={progress} isOverdue={isOverdue}>
             <div className="text-center">
-                <div className={cn("text-lg font-bold", isOverdue ? "text-red-400" : "text-foreground")}>{timerDisplay}</div>
+                <div className={cn("text-lg font-bold tabular-nums", isOverdue ? "text-red-400" : "text-foreground")}>{timerDisplay}</div>
                 <div className="text-xs text-muted-foreground">{isOverdue ? "Checkup Overdue" : "Next Checkup"}</div>
             </div>
         </CircularProgress>
@@ -141,7 +141,7 @@ export default function TrackerTab({
                   </div>
                   {activeSession && (
                     <Badge variant={isOverdue ? "destructive" : "default"} className={cn(
-                      isOverdue ? "bg-red-500 text-white" : "bg-green-500 text-white"
+                      isOverdue ? "bg-red-500/90 text-white" : "bg-green-500/90 text-white"
                     )}>
                       {activeSession.status === 'active' ? 'Sleeping' : 'Completed'}
                     </Badge>

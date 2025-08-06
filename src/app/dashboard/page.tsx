@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { getAuth, onAuthStateChanged, signOut, type User } from 'firebase/auth';
+import type { User } from 'next-auth';
 import { useRouter } from 'next/navigation';
 import { Moon, Archive, Settings, LogOut, LineChart } from "lucide-react";
 import type { Person, SleepSession, SleepLog, ActiveTab } from '@/lib/types';
@@ -10,7 +10,6 @@ import { useToast } from '@/hooks/use-toast';
 import { nanoid } from 'nanoid';
 import Cookies from 'js-cookie';
 
-import { firebaseApp } from '@/lib/firebase';
 import AnimatedTabs from '@/components/animated-tabs';
 import TrackerTab from '@/components/tracker-tab';
 import ArchiveTab from '@/components/archive-tab';
@@ -19,9 +18,6 @@ import ReportsTab from '@/components/reports-tab';
 
 const DEFAULT_CHECKUP_INTERVAL_MIN = 10;
 const DEFAULT_ALARM_INTERVAL_MIN = 2;
-
-// NOTE: All data is now ephemeral and will be reset on page load.
-// This sets the stage for a database integration.
 
 const getInitialPeople = (): Person[] => [];
 const getInitialLogs = (): SleepLog[] => [];
@@ -44,29 +40,17 @@ export default function DashboardPage() {
 
   // Auth state listener
   useEffect(() => {
-    if (!firebaseApp.options?.apiKey) {
-      // Firebase not configured, no need to listen for auth state
-      return;
-    }
-    const auth = getAuth(firebaseApp);
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
+    const session = Cookies.get('session');
+    if (session) {
+      try {
+        const user = JSON.parse(session);
         setCurrentUser(user);
-        const idToken = await user.getIdToken();
-        // Send token to server to create session cookie
-        await fetch('/api/auth/session', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${idToken}` }
-        });
-      } else {
-        setCurrentUser(null);
-        // Remove cookie and redirect
-        Cookies.remove('session');
+      } catch (e) {
         router.push('/login');
       }
-    });
-
-    return () => unsubscribe();
+    } else {
+      router.push('/login');
+    }
   }, [router]);
 
 
@@ -122,14 +106,9 @@ export default function DashboardPage() {
   };
 
   const handleLogout = async () => {
-    if (!firebaseApp.options?.apiKey) return;
-    try {
-        const auth = getAuth(firebaseApp);
-        await signOut(auth);
-        toast({ title: "Logged Out", description: "You have been successfully logged out." });
-    } catch (error) {
-        toast({ variant: 'destructive', title: "Logout Failed", description: "An error occurred while logging out." });
-    }
+    Cookies.remove('session');
+    toast({ title: "Logged Out", description: "You have been successfully logged out." });
+    router.push('/login');
   };
 
   const tabs = [

@@ -2,10 +2,10 @@
 "use client";
 
 import { useState } from 'react';
-import type { User } from 'firebase/auth';
+import type { User } from 'next-auth';
 import { Bell, User as UserIcon, Trash2, Sun, Moon, Laptop, Clock, Edit, LogOut, BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import AddPersonDialog from './add-user-dialog';
 import EditPersonDialog from './edit-person-dialog';

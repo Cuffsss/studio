@@ -2,14 +2,13 @@
 "use client";
 
 import { useState } from 'react';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import Cookies from 'js-cookie';
 
-import { firebaseApp } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -39,37 +38,23 @@ export default function LoginPage() {
 
   const handleLogin = async (values: z.infer<typeof formSchema>) => {
     setLoading(true);
-    if (!firebaseApp.options?.apiKey) {
-      toast({
-        variant: 'destructive',
-        title: 'Firebase Not Configured',
-        description: 'Please add your Firebase credentials to the environment variables to use authentication.',
-      });
-      setLoading(false);
-      return;
-    }
-    try {
-      const auth = getAuth(firebaseApp);
-      await signInWithEmailAndPassword(auth, values.email, values.password);
+    
+    // NOTE: This is a mock authentication system for local development.
+    // Do NOT use this in production.
+    if (values.email && values.password) {
+      const user = { email: values.email, name: values.email };
+      Cookies.set('session', JSON.stringify(user), { expires: 1 });
       toast({ title: "Success", description: "Logged in successfully." });
       router.push('/dashboard');
-    } catch (error: any) {
-      console.error(error);
-      const errorCode = error.code;
-      let errorMessage = "An unknown error occurred.";
-      if (errorCode === 'auth/invalid-credential') {
-        errorMessage = "Invalid email or password. Please try again.";
-      } else if (errorCode === 'auth/user-not-found' || errorCode === 'auth/wrong-password') {
-        errorMessage = "Invalid email or password. Please try again.";
-      }
-      toast({
+    } else {
+       toast({
         variant: 'destructive',
         title: 'Login Failed',
-        description: errorMessage,
+        description: "Invalid credentials provided.",
       });
-    } finally {
-      setLoading(false);
     }
+
+    setLoading(false);
   };
 
   return (

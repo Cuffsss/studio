@@ -5,7 +5,6 @@ import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, LineChart, Line } from 'recharts';
 import type { Person, SleepLog } from '@/lib/types';
-import { formatDuration } from '@/lib/utils';
 import { FileQuestion } from 'lucide-react';
 
 interface ReportsTabProps {
@@ -47,6 +46,7 @@ export default function ReportsTab({ logs, people }: ReportsTabProps) {
     const dateCounts: { [date: string]: number } = {};
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    sevenDaysAgo.setHours(0,0,0,0);
 
     for (let i = 0; i < 7; i++) {
         const date = new Date();
@@ -56,8 +56,9 @@ export default function ReportsTab({ logs, people }: ReportsTabProps) {
     }
 
     logs.forEach(log => {
-        if (log.action === 'start' && log.timestamp >= sevenDaysAgo) {
-            const dateString = log.timestamp.toISOString().split('T')[0];
+        const logDate = new Date(log.timestamp);
+        if (log.action === 'start' && logDate >= sevenDaysAgo) {
+            const dateString = logDate.toISOString().split('T')[0];
             if (dateCounts[dateString] !== undefined) {
                 dateCounts[dateString]++;
             }
@@ -73,7 +74,7 @@ export default function ReportsTab({ logs, people }: ReportsTabProps) {
 
   }, [logs]);
 
-  const hasData = logs.length > 0 && people.length > 0;
+  const hasData = useMemo(() => averageSleepData.length > 0 || sessionsLast7Days.some(d => d['Sleep Sessions'] > 0), [averageSleepData, sessionsLast7Days]);
 
   if (!hasData) {
     return (
