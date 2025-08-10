@@ -44,7 +44,7 @@ export default function ArchiveTab({ logs, people }: ArchiveTabProps) {
   };
 
   const exportToPdf = async () => {
-    if (!logsContainerRef.current || filteredLogs.length === 0) {
+    if (filteredLogs.length === 0) {
         toast({
             variant: "destructive",
             title: "Export Failed",
@@ -52,17 +52,61 @@ export default function ArchiveTab({ logs, people }: ArchiveTabProps) {
         });
         return;
     }
-    
+
     setIsExporting(true);
     toast({ title: "Exporting...", description: "Generating PDF, please wait." });
 
+    // Create a temporary element for PDF generation
+    const pdfElement = document.createElement("div");
+    pdfElement.style.position = "absolute";
+    pdfElement.style.left = "-9999px";
+    pdfElement.style.background = "white";
+    pdfElement.style.padding = "20px";
+    pdfElement.style.fontFamily = "sans-serif";
+    pdfElement.style.color = "black";
+    pdfElement.style.width = "800px";
+
+    const personFilterText = selectedPerson === "all" ? "All People" : people.find(p => p.id === selectedPerson)?.name || 'Unknown Person';
+    const dateFilterText = filterDate ? new Date(filterDate).toLocaleDateString() : 'All Dates';
+
+    let tableHTML = `
+      <h1 style="font-size: 24px; font-weight: bold; margin-bottom: 8px;">Sleep Log Report</h1>
+      <p style="font-size: 14px; margin-bottom: 16px;">Filters: ${personFilterText} | ${dateFilterText}</p>
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="background-color: #f2f2f2;">
+            <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Timestamp</th>
+            <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Person</th>
+            <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Action</th>
+            <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+    
+    filteredLogs.forEach(log => {
+        tableHTML += `
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd;">${log.timestamp.toLocaleString()}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${log.personName}</td>
+                <td style="padding: 8px; border: 1px solid #ddd; text-transform: capitalize;">${log.action}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${log.notes || ''}</td>
+            </tr>
+        `;
+    });
+
+    tableHTML += `
+        </tbody>
+      </table>
+    `;
+
+    pdfElement.innerHTML = tableHTML;
+    document.body.appendChild(pdfElement);
+
     try {
-        const canvas = await html2canvas(logsContainerRef.current, { 
-            scale: 2,
-            useCORS: true,
-            backgroundColor: null // Use element's background
-        });
+        const canvas = await html2canvas(pdfElement, { scale: 2 });
         const imgData = canvas.toDataURL('image/png');
+        
         const pdf = new jsPDF({
             orientation: 'p',
             unit: 'px',
@@ -73,7 +117,7 @@ export default function ArchiveTab({ logs, people }: ArchiveTabProps) {
 
         const personFilter = selectedPerson === "all" ? "all-people" : people.find(p => p.id === selectedPerson)?.name || 'person';
         const dateFilter = filterDate || 'all-dates';
-        pdf.save(`sleep-logs-${personFilter.replace(' ', '_')}-${dateFilter}.pdf`);
+        pdf.save(`sleep-logs-${personFilter.replace(/\s+/g, '_')}-${dateFilter}.pdf`);
 
         toast({ title: "Export Successful", description: "Your PDF has been downloaded." });
 
@@ -86,6 +130,7 @@ export default function ArchiveTab({ logs, people }: ArchiveTabProps) {
         });
     } finally {
         setIsExporting(false);
+        document.body.removeChild(pdfElement);
     }
 };
 
@@ -142,7 +187,7 @@ export default function ArchiveTab({ logs, people }: ArchiveTabProps) {
         </div>
       </Card>
 
-      <div ref={logsContainerRef} className="space-y-2 bg-background p-2 rounded-lg">
+      <div ref={logsContainerRef} className="space-y-2">
         {filteredLogs.length === 0 ? (
           <Card className="p-8 text-center bg-card border-border">
             <Archive className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
