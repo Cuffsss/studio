@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from 'react';
-import type { User } from 'next-auth';
+import type { User } from '@/lib/types';
 import { Bell, User as UserIcon, Trash2, Sun, Moon, Laptop, Clock, Edit, LogOut, BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription } from "@/components/ui/card";
@@ -27,7 +27,7 @@ interface SettingsTabProps {
   alarmIntervalMin: number;
   onSetAlarmInterval: (minutes: number) => void;
   onLogout: () => void;
-  currentUser: User | null;
+  currentUser?: User;
 }
 
 export default function SettingsTab({

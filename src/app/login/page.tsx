@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import Cookies from 'js-cookie';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,18 +38,30 @@ export default function LoginPage() {
   const handleLogin = async (values: z.infer<typeof formSchema>) => {
     setLoading(true);
     
-    // NOTE: This is a mock authentication system for local development.
-    // Do NOT use this in production.
-    if (values.email && values.password) {
-      const user = { email: values.email, name: values.email };
-      Cookies.set('session', JSON.stringify(user), { expires: 1 });
-      toast({ title: "Success", description: "Logged in successfully." });
-      router.push('/dashboard');
-    } else {
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      });
+
+      if (res.ok) {
+        toast({ title: "Success", description: "Logged in successfully." });
+        router.push('/dashboard');
+        router.refresh(); // ensures the page gets the new session
+      } else {
+        const data = await res.json();
+        toast({
+          variant: 'destructive',
+          title: 'Login Failed',
+          description: data.message || "Invalid credentials provided.",
+        });
+      }
+    } catch (error) {
        toast({
         variant: 'destructive',
-        title: 'Login Failed',
-        description: "Invalid credentials provided.",
+        title: 'Login Error',
+        description: "An error occurred during login. Please try again.",
       });
     }
 

@@ -2,10 +2,9 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import type { User } from 'next-auth';
 import { useRouter } from 'next/navigation';
 import { Moon, Archive, Settings, LogOut, LineChart } from "lucide-react";
-import type { Person, SleepSession, SleepLog, ActiveTab } from '@/lib/types';
+import type { Person, SleepSession, SleepLog, ActiveTab, UserData } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { nanoid } from 'nanoid';
 import Cookies from 'js-cookie';
@@ -15,44 +14,18 @@ import TrackerTab from '@/components/tracker-tab';
 import ArchiveTab from '@/components/archive-tab';
 import SettingsTab from '@/components/settings-tab';
 import ReportsTab from '@/components/reports-tab';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const DEFAULT_CHECKUP_INTERVAL_MIN = 10;
 const DEFAULT_ALARM_INTERVAL_MIN = 2;
 
-const getInitialPeople = (): Person[] => {
-  if (typeof window === 'undefined') return [];
-  try {
-    const item = window.localStorage.getItem('people');
-    return item ? JSON.parse(item) : [];
-  } catch (error) {
-    console.warn("Error reading people from localStorage", error);
-    return [];
-  }
-};
-
-const getInitialLogs = (): SleepLog[] => {
-  if (typeof window === 'undefined') return [];
-  try {
-    const item = window.localStorage.getItem('logs');
-    const parsed = item ? JSON.parse(item) : [];
-    // Dates are stored as strings in JSON, so we need to convert them back
-    return parsed.map((log: SleepLog) => ({
-      ...log,
-      timestamp: new Date(log.timestamp),
-    }));
-  } catch (error) {
-    console.warn("Error reading logs from localStorage", error);
-    return [];
-  }
-};
-
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("tracker");
-  
-  const [people, setPeople] = useState<Person[]>([]);
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
   const [activeSessions, setActiveSessions] = useState<SleepSession[]>([]);
-  const [logs, setLogs] = useState<SleepLog[]>([]);
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [checkupIntervalMin, setCheckupIntervalMin] = useState(DEFAULT_CHECKUP_INTERVAL_MIN);
@@ -60,50 +33,58 @@ export default function DashboardPage() {
 
   const { toast } = useToast();
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  // Load initial state from localStorage on component mount (client-side only)
-  useEffect(() => {
-    setPeople(getInitialPeople());
-    setLogs(getInitialLogs());
-  }, []);
+  const people = userData?.people || [];
+  const logs = userData?.logs || [];
+  const currentUser = userData?.user;
 
-  // Persist people to localStorage
+  // Fetch initial data
   useEffect(() => {
-    try {
-      if (people.length > 0) { // Avoid overwriting on initial empty state
-        window.localStorage.setItem('people', JSON.stringify(people));
-      }
-    } catch (error) {
-      console.error("Error saving people to localStorage", error);
-    }
-  }, [people]);
-  
-  // Persist logs to localStorage
-  useEffect(() => {
-    try {
-      if (logs.length > 0) { // Avoid overwriting on initial empty state
-        window.localStorage.setItem('logs', JSON.stringify(logs));
-      }
-    } catch (error) {
-      console.error("Error saving logs to localStorage", error);
-    }
-  }, [logs]);
-
-  // Auth state listener
-  useEffect(() => {
-    const session = Cookies.get('session');
-    if (session) {
+    const fetchData = async () => {
+      setIsLoading(true);
       try {
-        const user = JSON.parse(session);
-        setCurrentUser(user);
-      } catch (e) {
-        router.push('/login');
+        const res = await fetch('/api/data');
+        if (res.ok) {
+          const data = await res.json();
+          setUserData(data);
+        } else {
+           if (res.status === 401) {
+            router.push('/login');
+          } else {
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch user data.' });
+          }
+        }
+      } catch (error) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not connect to the server.' });
+      } finally {
+        setIsLoading(false);
       }
-    } else {
-      router.push('/login');
+    };
+    fetchData();
+  }, [router, toast]);
+  
+  // Update data on server
+  const updateUserData = async (updatedData: Partial<UserData>) => {
+    const optimisticData = { ...userData, ...updatedData } as UserData;
+    setUserData(optimisticData); // Optimistic update
+
+    try {
+      const res = await fetch('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedData),
+      });
+
+      if (!res.ok) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to save data.' });
+        // Revert optimistic update on failure - could fetch again for true state
+        const freshRes = await fetch('/api/data');
+        if(freshRes.ok) setUserData(await freshRes.json());
+      }
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not connect to the server to save data.' });
     }
-  }, [router]);
+  };
 
 
   // Check notification permission
@@ -184,7 +165,7 @@ export default function DashboardPage() {
       notes,
     };
 
-    setLogs(prev => [newLog, ...prev]);
+    updateUserData({ logs: [newLog, ...logs] });
   };
 
   const scheduleOverdueAlarm = (personName: string, sessionId: string) => {
@@ -308,23 +289,40 @@ export default function DashboardPage() {
       ...personData,
       notificationsEnabled: true
     };
-    setPeople(prev => [...prev, newPerson]);
+    updateUserData({ people: [...people, newPerson] });
     toast({ title: "Person Added", description: `${newPerson.name} has been added.` });
   };
 
   const handleEditPerson = (personId: string, updatedData: Omit<Person, 'id' | 'notificationsEnabled'>) => {
-    setPeople(prev => prev.map(p => p.id === personId ? { ...p, ...updatedData } : p));
+    const updatedPeople = people.map(p => p.id === personId ? { ...p, ...updatedData } : p);
+    updateUserData({ people: updatedPeople });
     toast({ title: "Person Updated", description: `${updatedData.name} has been updated.` });
   };
 
   const handleRemovePerson = (personId: string) => {
     const personName = people.find(p => p.id === personId)?.name;
-    setPeople(prev => prev.filter(p => p.id !== personId));
-    setActiveSessions(prev => prev.filter(s => s.personId !== personId));
+    const updatedPeople = people.filter(p => p.id !== personId);
+    setActiveSessions(prev => prev.filter(s => s.personId !== personId)); // Also remove active sessions for this person
+    updateUserData({ people: updatedPeople });
     toast({ title: "Person Removed", description: `${personName || 'Person'} has been removed.`, variant: 'destructive' });
   };
 
   const renderActiveTab = () => {
+     if (isLoading) {
+      return (
+         <div className="p-4 pb-24 space-y-4 max-w-2xl mx-auto">
+          <div className="text-center mb-6">
+            <Skeleton className="h-8 w-48 mx-auto" />
+            <Skeleton className="h-4 w-64 mx-auto mt-2" />
+          </div>
+          <div className="space-y-4">
+            <Card className="p-4"><Skeleton className="h-48" /></Card>
+            <Card className="p-4"><Skeleton className="h-48" /></Card>
+          </div>
+        </div>
+      );
+    }
+
     const checkupIntervalMs = checkupIntervalMin * 60 * 1000;
     switch (activeTab) {
       case "tracker":

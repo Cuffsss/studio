@@ -1,27 +1,24 @@
-import {NextResponse} from 'next/server';
-import type {NextRequest} from 'next/server';
+
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { verifySession } from '@/lib/session';
 
 const PUBLIC_PATHS = ['/login', '/signup'];
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isPublicPath = PUBLIC_PATHS.includes(path);
-  const sessionCookie = request.cookies.get('session');
+  const session = await verifySession().catch(() => null);
 
   // If the user is on a public path AND has a session, redirect to the dashboard.
-  if (isPublicPath && sessionCookie) {
+  if (isPublicPath && session) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   // If the user is on a protected path AND does NOT have a session, redirect to login.
-  if (!isPublicPath && !sessionCookie && path !== '/dashboard') {
+  if (!isPublicPath && !session) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
-  
-  if (path === '/dashboard' && !sessionCookie) {
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
-
 
   return NextResponse.next();
 }

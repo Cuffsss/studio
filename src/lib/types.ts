@@ -1,4 +1,5 @@
 
+
 export type Person = {
   id: string;
   name: string;
@@ -8,7 +9,7 @@ export type Person = {
 };
 
 export type SleepSession = {
-  id: string;
+  id:string;
   personId: string;
   personName: string;
   startTime: Date;
@@ -26,6 +27,16 @@ export type SleepLog = {
   timestamp: Date;
   sessionId: string;
   notes?: string;
+}
+
+export type User = {
+    email: string;
+}
+
+export type UserData = {
+    user: User;
+    people: Person[];
+    logs: SleepLog[];
 }
 
 export type ActiveTab = 'tracker' | 'archive' | 'settings' | 'reports';

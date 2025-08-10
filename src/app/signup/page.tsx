@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import Cookies from 'js-cookie';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,19 +39,31 @@ export default function SignupPage() {
   const handleSignup = async (values: z.infer<typeof formSchema>) => {
     setLoading(true);
     
-    // NOTE: This is a mock authentication system for local development.
-    // Do NOT use this in production.
-    if (values.email && values.password) {
-        const user = { email: values.email, name: values.email };
-        Cookies.set('session', JSON.stringify(user), { expires: 1 });
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      });
+
+      if (res.ok) {
         toast({ title: "Success", description: "Account created successfully. Logging you in..." });
         router.push('/dashboard');
-    } else {
+        router.refresh(); // ensures the page gets the new session
+      } else {
+        const data = await res.json();
         toast({
-            variant: 'destructive',
-            title: 'Signup Failed',
-            description: "Please provide a valid email and password.",
+          variant: 'destructive',
+          title: 'Signup Failed',
+          description: data.message || "An error occurred.",
         });
+      }
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Signup Error',
+        description: "An error occurred during signup. Please try again.",
+      });
     }
     
     setLoading(false);
