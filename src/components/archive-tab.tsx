@@ -56,41 +56,44 @@ export default function ArchiveTab({ logs, people }: ArchiveTabProps) {
     setIsExporting(true);
     toast({ title: "Exporting...", description: "Generating PDF, please wait." });
 
-    // Create a temporary element for PDF generation
     const pdfElement = document.createElement("div");
     pdfElement.style.position = "absolute";
     pdfElement.style.left = "-9999px";
     pdfElement.style.background = "white";
-    pdfElement.style.padding = "20px";
-    pdfElement.style.fontFamily = "sans-serif";
-    pdfElement.style.color = "black";
-    pdfElement.style.width = "800px";
+    pdfElement.style.padding = "40px";
+    pdfElement.style.fontFamily = "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif";
+    pdfElement.style.color = "#333";
+    pdfElement.style.width = "1000px"; // Increased width to ensure content fits
 
     const personFilterText = selectedPerson === "all" ? "All People" : people.find(p => p.id === selectedPerson)?.name || 'Unknown Person';
     const dateFilterText = filterDate ? new Date(filterDate).toLocaleDateString() : 'All Dates';
 
     let tableHTML = `
-      <h1 style="font-size: 24px; font-weight: bold; margin-bottom: 8px;">Sleep Log Report</h1>
-      <p style="font-size: 14px; margin-bottom: 16px;">Filters: ${personFilterText} | ${dateFilterText}</p>
-      <table style="width: 100%; border-collapse: collapse;">
+      <div style="margin-bottom: 24px;">
+        <h1 style="font-size: 28px; font-weight: bold; color: #1a202c; margin: 0;">Sleep Log Report</h1>
+        <p style="font-size: 14px; color: #718096; margin-top: 4px;">Filters: ${personFilterText} | ${dateFilterText}</p>
+        <p style="font-size: 12px; color: #a0aec0; margin-top: 2px;">Exported on: ${new Date().toLocaleString()}</p>
+      </div>
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
         <thead>
-          <tr style="background-color: #f2f2f2;">
-            <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Timestamp</th>
-            <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Person</th>
-            <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Action</th>
-            <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Notes</th>
+          <tr style="background-color: #edf2f7;">
+            <th style="padding: 12px; border: 1px solid #e2e8f0; text-align: left; font-weight: 600; color: #4a5568;">Timestamp</th>
+            <th style="padding: 12px; border: 1px solid #e2e8f0; text-align: left; font-weight: 600; color: #4a5568;">Person</th>
+            <th style="padding: 12px; border: 1px solid #e2e8f0; text-align: left; font-weight: 600; color: #4a5568;">Action</th>
+            <th style="padding: 12px; border: 1px solid #e2e8f0; text-align: left; font-weight: 600; color: #4a5568;">Notes</th>
           </tr>
         </thead>
         <tbody>
     `;
     
-    filteredLogs.forEach(log => {
+    filteredLogs.forEach((log, index) => {
+        const bgColor = index % 2 === 0 ? 'white' : '#f7fafc';
         tableHTML += `
-            <tr>
-                <td style="padding: 8px; border: 1px solid #ddd;">${log.timestamp.toLocaleString()}</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${log.personName}</td>
-                <td style="padding: 8px; border: 1px solid #ddd; text-transform: capitalize;">${log.action}</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${log.notes || ''}</td>
+            <tr style="background-color: ${bgColor};">
+                <td style="padding: 12px; border: 1px solid #e2e8f0; vertical-align: top;">${log.timestamp.toLocaleString()}</td>
+                <td style="padding: 12px; border: 1px solid #e2e8f0; vertical-align: top;">${log.personName}</td>
+                <td style="padding: 12px; border: 1px solid #e2e8f0; vertical-align: top; text-transform: capitalize;">${log.action}</td>
+                <td style="padding: 12px; border: 1px solid #e2e8f0; vertical-align: top; white-space: pre-wrap; word-wrap: break-word;">${log.notes || ''}</td>
             </tr>
         `;
     });
