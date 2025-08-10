@@ -15,7 +15,7 @@ const CircularProgress: React.FC<CircularProgressProps> = ({ progress, children,
     const offset = circumference - (progress / 100) * circumference;
 
     return (
-        <div className="relative w-32 h-32">
+        <div className="relative w-24 h-24">
             <svg
                 className="w-full h-full"
                 viewBox="0 0 120 120"
@@ -32,7 +32,7 @@ const CircularProgress: React.FC<CircularProgressProps> = ({ progress, children,
                 <circle
                     className={cn(
                         "transition-all duration-300",
-                        isOverdue ? "text-red-500 animate-pulse" : "text-primary"
+                        isOverdue ? "text-red-500 animate-pulse-slow" : "text-primary"
                     )}
                     strokeWidth="10"
                     strokeDasharray={circumference}
