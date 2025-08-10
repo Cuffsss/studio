@@ -15,6 +15,7 @@ import ArchiveTab from '@/components/archive-tab';
 import SettingsTab from '@/components/settings-tab';
 import ReportsTab from '@/components/reports-tab';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Card } from '@/components/ui/card';
 
 const DEFAULT_CHECKUP_INTERVAL_MIN = 10;
 const DEFAULT_ALARM_INTERVAL_MIN = 2;
