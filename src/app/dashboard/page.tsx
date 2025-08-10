@@ -19,16 +19,40 @@ import ReportsTab from '@/components/reports-tab';
 const DEFAULT_CHECKUP_INTERVAL_MIN = 10;
 const DEFAULT_ALARM_INTERVAL_MIN = 2;
 
-const getInitialPeople = (): Person[] => [];
-const getInitialLogs = (): SleepLog[] => [];
+const getInitialPeople = (): Person[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const item = window.localStorage.getItem('people');
+    return item ? JSON.parse(item) : [];
+  } catch (error) {
+    console.warn("Error reading people from localStorage", error);
+    return [];
+  }
+};
+
+const getInitialLogs = (): SleepLog[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const item = window.localStorage.getItem('logs');
+    const parsed = item ? JSON.parse(item) : [];
+    // Dates are stored as strings in JSON, so we need to convert them back
+    return parsed.map((log: SleepLog) => ({
+      ...log,
+      timestamp: new Date(log.timestamp),
+    }));
+  } catch (error) {
+    console.warn("Error reading logs from localStorage", error);
+    return [];
+  }
+};
 
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("tracker");
   
-  const [people, setPeople] = useState<Person[]>(getInitialPeople());
+  const [people, setPeople] = useState<Person[]>([]);
   const [activeSessions, setActiveSessions] = useState<SleepSession[]>([]);
-  const [logs, setLogs] = useState<SleepLog[]>(getInitialLogs());
+  const [logs, setLogs] = useState<SleepLog[]>([]);
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [checkupIntervalMin, setCheckupIntervalMin] = useState(DEFAULT_CHECKUP_INTERVAL_MIN);
@@ -37,6 +61,34 @@ export default function DashboardPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  // Load initial state from localStorage on component mount (client-side only)
+  useEffect(() => {
+    setPeople(getInitialPeople());
+    setLogs(getInitialLogs());
+  }, []);
+
+  // Persist people to localStorage
+  useEffect(() => {
+    try {
+      if (people.length > 0) { // Avoid overwriting on initial empty state
+        window.localStorage.setItem('people', JSON.stringify(people));
+      }
+    } catch (error) {
+      console.error("Error saving people to localStorage", error);
+    }
+  }, [people]);
+  
+  // Persist logs to localStorage
+  useEffect(() => {
+    try {
+      if (logs.length > 0) { // Avoid overwriting on initial empty state
+        window.localStorage.setItem('logs', JSON.stringify(logs));
+      }
+    } catch (error) {
+      console.error("Error saving logs to localStorage", error);
+    }
+  }, [logs]);
 
   // Auth state listener
   useEffect(() => {
